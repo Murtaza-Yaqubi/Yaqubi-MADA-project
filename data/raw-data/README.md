@@ -1,14 +1,11 @@
 #raw-data
 
-This folder should contain all raw data. As needed add sub-folders.
+This folder contains all the raw data files used in the project.
 
-Currently, as an example, it contains a simple made-up data-set in an Excel file.
+It currently includes:
 
-The dataset contains the variables `Height`, `Weight` and `Gender` of a few imaginary individuals.
+Cardiovascular_Disease_Dataset.csv": The primary unprocessed dataset, which contains variables such as age, gender, fastingbloodsugar, serumcholestrol, restingBP, and chestpain, among others. Please note that some missing values are present in the data.
 
-The dataset purposefully contains some faulty entries that need to be cleaned.
+"example data.xlsx": An additional example dataset provided for another exercise.
 
-Generally, any dataset should contain some meta-data explaining what each variable in the dataset is. (This is often called a **Codebook**.) For this simple example, the codebook is given as a second sheet in the Excel file.
-
-This raw data-set should generally not be edited by hand. It should instead be loaded and processed/cleaned using code.
-
+Cardiovascular_Disease_Dataset_Description.pdf": A PDF file that provides a detailed description of the variables in the Cardiovascular Disease dataset.

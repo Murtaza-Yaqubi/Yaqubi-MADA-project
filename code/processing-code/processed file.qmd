@@ -1,0 +1,93 @@
+---
+title: "Processing code"
+author: "Murtaza Yaqubi"
+format: html
+editor: visual
+---
+
+# Load necessary libraries
+```{r}
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(tidyverse)
+library(here)           # For file paths
+library(naniar)         # For gg_miss_var()
+```
+
+
+# PART 1: DATA IMPORT AND CLEANING
+```{r}
+# Import the dataset
+cardio_df <- read_csv(here("data", "raw-data", "Cardiovascular_Disease_Dataset.csv"))
+
+# Basic exploration of the dataset
+head(cardio_df)           # View the first few rows
+colnames(cardio_df)       # Check column names
+dim(cardio_df)            # Check dimensions (should be 1025 rows x 14 columns)
+summary(cardio_df)        # Get a summary of the data
+glimpse(cardio_df)        # Glimpse at the data structure
+
+# Visualize missing values for each variable
+gg_miss_var(cardio_df)    # Display number of NAs
+
+# Transform variables into suitable types and add descriptive labels
+cardio_df <- cardio_df %>%
+  mutate(
+    gender = factor(gender, levels = c(0, 1), labels = c("Female", "Male")), 
+    chestpain = factor(chestpain, levels = c(0, 1, 2, 3),
+                       labels = c("Typical Angina", "Atypical Angina", "Non-anginal Pain", "Asymptomatic")),
+    fastingbloodsugar = factor(fastingbloodsugar, levels = c(0, 1), labels = c("False", "True")),
+    restingrelectro = factor(restingrelectro, levels = c(0, 1, 2),
+                             labels = c("Normal", "ST-T Abnormality", "Left Ventricular Hypertrophy")),
+    exerciseangia = factor(exerciseangia, levels = c(0, 1), labels = c("No", "Yes")),
+    slope = factor(slope, levels = c(1, 2, 3), labels = c("Upsloping", "Flat", "Downsloping")),
+    target = factor(target, levels = c(0, 1), labels = c("No Heart Disease", "Heart Disease"))
+  )
+
+# Print the transformed dataset for verification
+print(cardio_df)
+```
+
+
+# PART 3: STATISTICAL ANALYSIS: DATA CLEANING, SUMMARIZATION, AND VISUALIZATION
+```{r}
+# Filter the data for individuals under 50 with normal cholesterol (<200 mg/dL) and create risk indicator variables for elevated blood pressure and ST depression.
+cleaned_df <- cardio_df %>%
+  filter(age < 50, serumcholestrol > 0, serumcholestrol < 200) %>%  
+  mutate(
+    # Create a binary variable for blood pressure:
+    # "Elevated" if restingBP is between 120 and 129; otherwise, "Otherwise"
+    elevated_BP = if_else(between(restingBP, 120, 129), "Elevated", "Otherwise"),
+    
+    # Create a binary indicator for ST depression:
+    # "Elevated" if oldpeak is greater than 1; otherwise, "Normal"
+    elevated_oldpeak = if_else(oldpeak > 1, "Elevated", "Normal")
+  ) %>% 
+  # Select the variables we want to keep
+  select(age, gender, chestpain, restingBP, serumcholestrol, fastingbloodsugar, 
+         maxheartrate, oldpeak, target, elevated_BP, elevated_oldpeak)
+
+# Print a sample of the cleaned dataset
+head(cleaned_df)
+
+
+# Create a summary table by grouping the cleaned data by blood pressure status, ST depression status, and heart disease (target)
+summary_table <- cleaned_df %>%
+  group_by(elevated_BP, elevated_oldpeak, target) %>%
+  summarise(count = n(), .groups = "drop")
+print(summary_table)
+
+summary_df = skimr::skim(summary_table)
+print(summary_table)
+# save to file
+summarytable_file = here("results", "tables", "summarytable2.rds")
+saveRDS(summary_df, file = summarytable_file)
+```
+
+
+# Save the processed data
+```{r}
+save_data_location <- here::here("data/processed-data/cleaned_df.rds")
+saveRDS(cleaned_df, file = save_data_location)
+```
