@@ -44,6 +44,7 @@ This heart disease dataset is acquired from one o f the multispecialty hospitals
 This dataset can be accessed at <https://data.mendeley.com/datasets/dzz48mvjht/1>
 
 # Load necessary libraries
+
 ```{r}
 library(knitr)
 library(readr)
@@ -61,8 +62,8 @@ library(pROC)
 library(naniar)         # For gg_miss_var()
 ```
 
-
 # PART 1: DATA IMPORT AND CLEANING
+
 ```{r}
 # Import the dataset
 cardio_df <- read_csv(here("data", "raw-data", "Cardiovascular_Disease_Dataset.csv"))
@@ -346,10 +347,18 @@ model <- glm(target_binary ~ elevated_BP + elevated_oldpeak,
              data = cleaned_df, family = binomial)
 summary(model)
 
+# save fit results table  
+table_file1 = here("results", "tables", "resulttable1.rds")
+saveRDS(model, file = table_file1)
+
 # Fit a logistic regression model including the interaction term
 model_interaction <- glm(target_binary ~ elevated_BP * elevated_oldpeak, 
                          data = cleaned_df, family = binomial)
 summary(model_interaction)
+
+# save fit results table  
+table_file1 = here("results", "tables", "resulttable2.rds")
+saveRDS(model_interaction, file = table_file1)
 ```
 
 In the logistic regression model that includes only elevated blood pressure and ST depression as predictors, the intercept is significant (p ≈ 0.034), which tells us that the baseline log odds of heart disease (when both predictors are at their reference levels) differ from zero. However, neither elevated blood pressure (p ≈ 0.259) nor elevated ST depression (p ≈ 0.563) are statistically significant predictors of heart disease on their own. When we include an interaction term between elevated blood pressure and ST depression, the results remain similar: the intercept is still significant (p ≈ 0.046), but the main effects of elevated blood pressure (p ≈ 0.279) and elevated ST depression (p ≈ 0.662), as well as their interaction (p ≈ 0.824), do not reach significance. These findings suggest that, in this analysis, neither elevated blood pressure nor elevated ST depression—nor their combination—provides significant predictive information for the presence of heart disease among these individuals.
@@ -367,6 +376,10 @@ or_results <- data.frame(
 )
 print("Odds Ratios (with 95% CI):")
 print(or_results)
+
+# save fit results table  
+table_file1 = here("results", "tables", "resulttable3.rds")
+saveRDS(or_results, file = table_file1)
 
 
 # Tidy the model output and compute odds ratios and 95% CI
@@ -391,6 +404,10 @@ rr_results <- data.frame(
 )
 print("Relative Risks (with 95% CI):")
 print(rr_results)
+
+# save fit results table  
+table_file1 = here("results", "tables", "resulttable4.rds")
+saveRDS(rr_results, file = table_file1)
 ```
 
 The baseline relative risk is about 0.23 (95% CI: 0.08–0.46). For patients in the "elevated_BPOtherwise" category, the risk increases to roughly 1.66 (95% CI: 0.73–5.19), and for those in the "elevated_oldpeakNormal" category, the risk is around 1.21 (95% CI: 0.61–2.35). The wide confidence intervals suggest some uncertainty, and since they include 1, these differences may not be statistically significant.
@@ -424,6 +441,10 @@ adj_or_results <- data.frame(
 )
 print("Adjusted Odds Ratios (with 95% CI):")
 print(adj_or_results)
+
+# save fit results table  
+table_file1 = here("results", "tables", "resulttable5.rds")
+saveRDS(adj_or_results, file = table_file1)
 
 # Tidy the adjusted model output and compute odds ratios and 95% CI
 tidy_adjusted_model <- tidy(adjusted_model, exponentiate = TRUE, conf.int = TRUE)
