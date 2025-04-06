@@ -2,9 +2,9 @@
 
 Welcome to this data analysis project, which explores whether younger individuals with clinically normal cholesterol levels face an increased risk of cardiovascular disease (CVD) when secondary risk factors such as elevated blood pressure or ST depression are present. This repository is organized to ensure clarity and reproducibility. Below is an overview of the folder structure:
 
-#### Folder Structure
+## Folder Structure
 
-#### code: 
+### code: 
 
 Contains all scripts and Quarto files used for the project. This folder is further organized into the following subfolders:
 
@@ -20,7 +20,7 @@ Houses scripts for the main statistical and predictive modeling analyses, such a
 
 Includes scripts for data cleaning, transformation, and processing. This is where the raw data is converted into a form ready for analysis.
 
-#### data: 
+### data: 
 
 Contains all data files relevant to the project, divided into:
 
@@ -32,13 +32,13 @@ The original, unprocessed dataset in CSV format.
 
 The cleaned and processed dataset saved in RDS format, ready for further analysis. This folder also houses the codebook for the dataset.
 
-#### products: 
+### products: 
 
 -   Contains final deliverables and project outputs, including: The manuscript, provided as a Quarto file (manuscript.qmd) that contains the complete analysis and code.
 
 -   A separate document (manuscript.docx) that provides a brief introduction to the analysis and a summary of the key findings.
 
-#### results: 
+### results: 
 
 Stores all automatically generated outputs from the analysis. This folder is organized into:
 
@@ -50,7 +50,7 @@ Contains visualizations (e.g., histograms, bar plots, violin plots) produced dur
 
 Contains summary tables and other output tables in RDS format that support the findings presented in the manuscript.
 
-#### README.md: 
+### README.md: 
 
 This file, which provides an overview of the repository and guidance on how to get started.
 
