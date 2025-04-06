@@ -27,3 +27,24 @@ results:Stores all automatically generated outputs from the analysis. This folde
 figures: Contains visualizations (e.g., histograms, bar plots, violin plots) produced during the analysis.
 
 tables: Contains summary tables and other output tables in RDS format that support the findings presented in the manuscript.
+
+README.md: This file, which provides an overview of the repository and guidance on how to get started.
+
+
+Getting Started
+
+Clone or Download the Repository: Begin by cloning this repository to your local machine or downloading it as a ZIP file.
+Open the Project: Open the project in RStudio using the provided .Rproj file to set the correct working directory.
+Install Required Packages: Ensure that you have all necessary R packages installed. Consider using renv or a similar package management tool for reproducibility.
+
+Run the Code:
+Start with the scripts in the processing-code subfolder to clean and process the raw data.
+Proceed with the scripts in eda-code to conduct exploratory data analysis.
+Run the scripts in analysis-code to perform the main statistical and predictive analyses.
+
+View the Results: Check the results folder for generated figures and tables, and refer to the products folder for the final manuscript (manuscript.qmd) and accompanying document (manuscript.docx).
+
+
+Contributing
+
+If you plan to extend or modify this analysis, please maintain the established folder structure for consistency. Use descriptive commit messages, and include README.md files or comments in any new folders or files to explain their purpose.
