@@ -5,9 +5,8 @@ format: html
 editor: visual
 ---
 
-
-
 # Library/install libraries
+
 ```{r}
 library(here)
 library(dplyr)
@@ -16,9 +15,8 @@ library(ggplot2)
 library(corrplot)
 ```
 
-
-
 # EXPLORATORY DATA ANALYSIS (EDA)
+
 ```{r}
 # Import the dataset
 cardio_df <- read_csv(here("data", "raw-data", "Cardiovascular_Disease_Dataset.csv"))
@@ -41,8 +39,8 @@ cardio_df <- cardio_df %>%
 print(cardio_df)
 ```
 
-
 # Calculate summary statistics for selected variables
+
 ```{r}
 # Calculate summary statistics for selected variables
 summary_stats <- cardio_df %>% 
@@ -84,12 +82,12 @@ print(summary_stats)
 summary_df = skimr::skim(summary_stats)
 print(summary_stats)
 # save to file
-summarytable_file = here("results", "tables", "summarytable.rds")
+summarytable_file = here("results", "tables", "summarytable1.rds")
 saveRDS(summary_df, file = summarytable_file)
 ```
 
-
 # Age distribution
+
 ```{r}
 p1 <- ggplot(cardio_df, aes(x = age)) +
   geom_histogram(aes(y = ..density..), bins = 30, color = "black", fill = "steelblue", alpha = 0.5) +
@@ -101,9 +99,10 @@ p1 <- ggplot(cardio_df, aes(x = age)) +
 plot(p1)
 figure_file = here("results", "figures","Age distribution.png")
 ggsave(filename = figure_file, plot=p1) 
-```  
+```
 
 # Serum Cholesterol distribution
+
 ```{r}
 p2 <- ggplot(subset(cardio_df, serumcholestrol > 0), aes(x = serumcholestrol)) +
   geom_histogram(aes(y = ..density..), bins = 30, color = "black", fill = "forestgreen", alpha = 0.5) +
@@ -118,6 +117,7 @@ ggsave(filename = figure_file, plot=p2)
 ```
 
 # Resting Blood Pressure distribution
+
 ```{r}
 p3 <- ggplot(subset(cardio_df, restingBP > 0), aes(x = restingBP)) +
   geom_histogram(aes(y = ..density..), bins = 30, color = "black", fill = "maroon", alpha = 0.5) +
@@ -132,6 +132,7 @@ ggsave(filename = figure_file, plot=p3)
 ```
 
 # Boxplot for resting blood pressure by heart disease status
+
 ```{r}
 p4 <- ggplot(cardio_df, aes(x = target, y = restingBP, fill = target)) +
   geom_boxplot() +
@@ -146,6 +147,7 @@ ggsave(filename = figure_file, plot=p4)
 ```
 
 # Violin plot for oldpeak by heart disease status
+
 ```{r}
 p5 <- ggplot(cardio_df, aes(x = target, y = oldpeak, fill = target)) +
   geom_violin(trim = FALSE) +
@@ -160,6 +162,7 @@ ggsave(filename = figure_file, plot=p5)
 ```
 
 # Create the correlation matrix for selected numeric variables
+
 ```{r}
 numeric_vars <- cardio_df %>% 
   select(age, restingBP, serumcholestrol, maxheartrate, oldpeak)

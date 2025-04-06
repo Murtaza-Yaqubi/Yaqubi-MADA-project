@@ -6,6 +6,7 @@ editor: visual
 ---
 
 # Load necessary libraries
+
 ```{r}
 library(readr)
 library(dplyr)
@@ -15,8 +16,8 @@ library(here)           # For file paths
 library(naniar)         # For gg_miss_var()
 ```
 
+# DATA IMPORT AND CLEANING
 
-# PART 1: DATA IMPORT AND CLEANING
 ```{r}
 # Import the dataset
 cardio_df <- read_csv(here("data", "raw-data", "Cardiovascular_Disease_Dataset.csv"))
@@ -49,8 +50,8 @@ cardio_df <- cardio_df %>%
 print(cardio_df)
 ```
 
+# STATISTICAL ANALYSIS: DATA CLEANING, SUMMARIZATION, AND VISUALIZATION
 
-# PART 3: STATISTICAL ANALYSIS: DATA CLEANING, SUMMARIZATION, AND VISUALIZATION
 ```{r}
 # Filter the data for individuals under 50 with normal cholesterol (<200 mg/dL) and create risk indicator variables for elevated blood pressure and ST depression.
 cleaned_df <- cardio_df %>%
@@ -85,8 +86,8 @@ summarytable_file = here("results", "tables", "summarytable2.rds")
 saveRDS(summary_df, file = summarytable_file)
 ```
 
+# SAVE THE PROCESSED DATA
 
-# Save the processed data
 ```{r}
 save_data_location <- here::here("data/processed-data/cleaned_df.rds")
 saveRDS(cleaned_df, file = save_data_location)
