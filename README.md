@@ -8,15 +8,15 @@ Welcome to this data analysis project, which explores whether younger individual
 
 Contains all scripts and Quarto files used for the project. This folder is further organized into the following subfolders:
 
-#### eda-code: 
+-   eda-code:
 
 Contains scripts for Exploratory Data Analysis (EDA), including code for generating summary statistics, histograms, density plots, boxplots, violin plots, and correlation matrices.
 
-#### analysis-code: 
+-   analysis-code:
 
 Houses scripts for the main statistical and predictive modeling analyses, such as logistic regression, chi-square tests, and machine learning models (LASSO, random forest).
 
-#### processing-code: 
+-   processing-code:
 
 Includes scripts for data cleaning, transformation, and processing. This is where the raw data is converted into a form ready for analysis.
 
@@ -24,11 +24,11 @@ Includes scripts for data cleaning, transformation, and processing. This is wher
 
 Contains all data files relevant to the project, divided into:
 
-#### raw-data: 
+-   raw-data:
 
 The original, unprocessed dataset in CSV format.
 
-#### processed-data: 
+-   processed-data:
 
 The cleaned and processed dataset saved in RDS format, ready for further analysis. This folder also houses the codebook for the dataset.
 
@@ -42,11 +42,11 @@ The cleaned and processed dataset saved in RDS format, ready for further analysi
 
 Stores all automatically generated outputs from the analysis. This folder is organized into:
 
-#### figures: 
+-   figures:
 
 Contains visualizations (e.g., histograms, bar plots, violin plots) produced during the analysis.
 
-#### tables: 
+-   tables:
 
 Contains summary tables and other output tables in RDS format that support the findings presented in the manuscript.
 
