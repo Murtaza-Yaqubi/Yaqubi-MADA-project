@@ -1,6 +1,11 @@
-# eda-code
+# Exploratory Data Analysis (EDA) Code
 
-This folder contains code to do a simple exploratory data analysis (EDA) on the cardio_df dataset.
-The code produces a few tables and figures, which are saved in the appropriate `results` folder.
+This folder contains scripts used to perform exploratory data analysis (EDA) on the processed cardiovascular dataset. These files generate summary statistics and data visualizations to understand the distribution and relationships of key variables.
 
+## Files Included
 
+-   **01_summary_stats.qmd**\
+    This file computes descriptive statistics (mean, standard deviation, min, max) for key clinical variables like age, blood pressure, cholesterol, and heart rate. The output includes a formatted summary table saved as an RDS file.
+
+-   **02_visualizations.qmd**\
+    This script creates a variety of visualizations to explore variable distributions and relationships. Includes histograms, density plots, boxplots, violin plots, and a correlation matrix. All figures are saved to the `results/figures/` folder.

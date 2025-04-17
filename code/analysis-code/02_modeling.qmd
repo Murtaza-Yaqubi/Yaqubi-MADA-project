@@ -1,0 +1,87 @@
+---
+title: "Model Building"
+author: "Murtaza Yaqubi"
+format: html
+editor: visual
+---
+
+```{r}
+# Set seed for reproducibility
+rdmseed <- 123
+
+# Reset seed before modeling
+set.seed(rdmseed)
+
+cleaned_df <- cleaned_df %>%
+  mutate(target_binary = if_else(target == "Heart Disease", 1, 0))
+
+# Fit a standard linear regression model using predictors
+lm_model <- linear_reg() %>%
+  fit(target_binary ~ elevated_BP + elevated_oldpeak, data = cleaned_df)
+
+# Get predictions from linear model and calculate RMSE
+cleaned_df$pred_lm <- predict(lm_model, new_data = cleaned_df)$.pred
+rmse(cleaned_df, truth = target_binary, estimate = pred_lm)
+
+# Plot observed vs. predicted for Linear Model
+ggplot(cleaned_df, aes(x = target_binary, y = pred_lm)) +
+  geom_point(color = "darkblue", alpha = 0.7, size = 3) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "red", size = 1) +
+  scale_x_continuous(limits = c(0, 1)) +
+  scale_y_continuous(limits = c(0, 1))
+
+# Prepare recipe for LASSO with normalization
+rec <- recipe(target_binary ~ elevated_BP + elevated_oldpeak, data = cleaned_df) %>%
+  step_dummy(elevated_BP, elevated_oldpeak) %>%   # Convert categorical predictors to dummies
+  step_normalize(all_numeric(), -all_outcomes())
+
+# Define LASSO model with a fixed penalty
+lasso_spec <- linear_reg(penalty = 0.1, mixture = 1) %>%
+  set_engine("glmnet")
+
+# Create a workflow and fit the LASSO model
+wf <- workflow() %>%
+  add_recipe(rec) %>%
+  add_model(lasso_spec)
+
+lasso_fit <- fit(wf, data = cleaned_df)
+cleaned_df$pred_lasso <- predict(lasso_fit, new_data = cleaned_df)$.pred
+rmse(cleaned_df, truth = target_binary, estimate = pred_lasso)
+
+# Plot observed vs. predicted for LASSO Model
+ggplot(cleaned_df, aes(x = target_binary, y = pred_lasso)) +
+  geom_point(color = "darkviolet", alpha = 0.7, size = 3) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "red", size = 1) +
+  scale_x_continuous(limits = c(0, 1)) +
+  scale_y_continuous(limits = c(0, 1))
+
+# Create a workflow and fit the Random Forest model
+rf_model <- rand_forest() %>%
+  set_mode("regression") %>%
+  set_engine("ranger", seed = rdmseed)
+
+rf_fit <- rf_model %>%
+  fit(target_binary ~ elevated_BP + elevated_oldpeak, data = cleaned_df)
+
+# Get predictions and evaluate model performance
+cleaned_df$pred_rf <- predict(rf_fit, cleaned_df)$.pred
+rmse(cleaned_df, truth = target_binary, estimate = pred_rf)
+
+# Save RMSEs from all models to a table
+rmse_df <- tibble(
+  Model = c("Linear", "LASSO", "Random Forest"),
+  RMSE = c(
+    rmse(cleaned_df, truth = target_binary, estimate = pred_lm)$.estimate,
+    rmse(cleaned_df, truth = target_binary, estimate = pred_lasso)$.estimate,
+    rmse(cleaned_df, truth = target_binary, estimate = pred_rf)$.estimate
+  )
+)
+saveRDS(rmse_df, file = here("results", "tables", "table5_model_rmse_comparison.rds"))
+
+# Plot observed vs. predicted for RF Model
+ggplot(cleaned_df, aes(x = target_binary, y = pred_rf)) +
+  geom_point(color = "darkgreen", alpha = 0.7, size = 3) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "red", size = 1) +
+  scale_x_continuous(limits = c(0, 1)) +
+  scale_y_continuous(limits = c(0, 1))
+```

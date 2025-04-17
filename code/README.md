@@ -1,11 +1,20 @@
-# code
+# Code Directory
 
-Overview
+This directory contains all source code for the data analysis project, organized by analysis stage to promote clarity and reproducibility.
 
-This folder contains all of your project code, organized into multiple subfolders. The scripts load data (raw or processed), perform analysis, and save results (e.g., processed data, figures, computed values) in the appropriate locations.
+## Subfolders
 
-Folder Structure:
+- **processing-code/**  
+  Contains scripts that import, inspect, and clean the raw dataset. Outputs a cleaned `.rds` file ready for analysis.
 
-1- analysis-code: Contains the R script that performs the statistical analysis for the project.
-2- eda-code: Contains the R script for exploratory data analysis (EDA).
-3- processing-data: Contains the scripts used for data processing, including importing and cleaning the data.
+- **eda-code/**  
+  Contains scripts for exploratory data analysis (EDA), including summary statistics and data visualizations. Outputs include tables and figures saved to the `results/` folder.
+
+- **analysis-code/**  
+  Contains scripts for inferential statistical analysis, predictive modeling, and model tuning. Outputs include regression results, evaluation metrics, and model visualizations.
+
+- **full_code/**  
+  This folder contains a flattened Quarto document (`full_code.qmd`) that combines all analysis steps into one script. Useful for comprehensive rendering and reproducibility.
+
+
+

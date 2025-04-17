@@ -1,0 +1,85 @@
+---
+title: "Visualization"
+author: "Murtaza Yaqubi"
+format: html
+editor: visual
+---
+
+```{r}
+# Age distribution
+p1 <- ggplot(cardio_df, aes(x = age)) +
+  geom_histogram(aes(y = ..density..), bins = 30, color = "black", fill = "steelblue", alpha = 0.5) +
+  geom_density(color = "darkblue", linewidth = 1) +
+  labs(title = "Age Distribution", x = "Age", y = "Density") +
+  scale_x_continuous(breaks = seq(0, max(cardio_df$age, na.rm = TRUE) + 10, by = 10)) +
+  theme_bw()
+
+plot(p1)
+figure_file = here("results", "figures","Age distribution.png")
+ggsave(filename = figure_file, plot=p1)
+
+# Serum Cholesterol distribution (excluding zeros)
+p2 <- ggplot(subset(cardio_df, serumcholestrol > 0), aes(x = serumcholestrol)) +
+  geom_histogram(aes(y = ..density..), bins = 30, color = "black", fill = "forestgreen", alpha = 0.5) +
+  geom_density(color = "darkgreen", linewidth = 1) +
+  labs(title = "Serum Cholesterol Distribution", 
+       x = "Serum Cholesterol (mg/dL)", y = "Density") +
+  theme_minimal()
+
+plot(p2)
+figure_file = here("results", "figures","Serum Cholestrol.png")
+ggsave(filename = figure_file, plot=p2)
+
+# Resting Blood Pressure distribution (excluding zeros)
+p3 <- ggplot(subset(cardio_df, restingBP > 0), aes(x = restingBP)) +
+  geom_histogram(aes(y = ..density..), bins = 30, color = "black", fill = "maroon", alpha = 0.5) +
+  geom_density(color = "darkred", linewidth = 1) +
+  labs(title = "Resting Blood Pressure Distribution", 
+       x = "Resting Blood Pressure (mmHG)", y = "Density") +
+  theme_bw()
+
+plot(p3)
+figure_file = here("results", "figures","Resting Blood Pressure Distribution.png")
+ggsave(filename = figure_file, plot=p3)
+
+# Boxplot for resting blood pressure by heart disease status
+p4 <- ggplot(cardio_df, aes(x = target, y = restingBP, fill = target)) +
+  geom_boxplot() +
+  labs(title = "Resting Blood Pressure by Heart Disease Status",
+       x = "Heart Disease Status",
+       y = "Resting Blood Pressure (mmHg)") +
+  theme_minimal()
+
+plot(p4)
+figure_file = here("results", "figures","restingBP by heart disease status.png")
+ggsave(filename = figure_file, plot=p4)
+
+# Violin plot for oldpeak by heart disease status
+p5 <- ggplot(cardio_df, aes(x = target, y = oldpeak, fill = target)) +
+  geom_violin(trim = FALSE) +
+  labs(title = "Oldpeak Distribution by Heart Disease Status",
+       x = "Heart Disease Status",
+       y = "Oldpeak") +
+  theme_minimal()
+
+plot(p5)
+figure_file = here("results", "figures","oldpeak by heart disease status.png")
+ggsave(filename = figure_file, plot=p5)
+
+# Create the correlation matrix for selected numeric variables
+numeric_vars <- cardio_df %>% 
+  select(age, restingBP, serumcholestrol, maxheartrate, oldpeak)
+cor_matrix <- cor(numeric_vars, use = "pairwise.complete.obs")
+
+# Plot the correlation matrix with ggcorrplot
+p6 <- ggcorrplot(cor_matrix, 
+           lab = TRUE,                         
+           lab_size = 3,                       
+           colors = c("blue", "white", "red"),  # Color gradient from blue (negative) to red (positive)
+           title = "Correlation Matrix", 
+           ggtheme = theme_minimal()) 
+
+plot(p6)
+figure_file = here("results", "figures","correlation matrix.png")
+ggsave(filename = figure_file, plot=p6)
+```

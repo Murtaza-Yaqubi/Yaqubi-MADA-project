@@ -1,23 +1,32 @@
 ---
-  title: "Statistical analysis"
- author: "Murtaza Yaqubi"
+title: "Inferential Statistics"
+author: "Murtaza Yaqubi"
+format: html
+editor: visual
 ---
-  
-# Load necessary packages
 
-library(here)
-library(dplyr)
-library(ggplot2)
+```{r}
+# Filter the data for individuals under 50 with normal cholesterol (<200 mg/dL) and create risk indicator variables for elevated blood pressure and ST depression.
+cleaned_df <- cardio_df %>%
+  filter(age < 50, serumcholestrol > 0, serumcholestrol < 200) %>%  
+  mutate(
+    # Create a binary variable for blood pressure:
+    # "Elevated" if restingBP is between 120 and 129; otherwise, "Otherwise"
+    elevated_BP = if_else(between(restingBP, 120, 129), "Elevated", "Otherwise"),
 
+    # Create a binary indicator for ST depression:
+    # "Elevated" if oldpeak is greater than 1; otherwise, "Normal"
+    elevated_oldpeak = if_else(oldpeak > 1, "Elevated", "Normal")
+  ) %>% 
+  # Select the variables we want to keep
+  select(age, gender, chestpain, restingBP, serumcholestrol, fastingbloodsugar, 
+         maxheartrate, oldpeak, target, elevated_BP, elevated_oldpeak)
 
-# Load data
-data_location <- here::here("data","processed-data","cleaned_df.rds")
+# Print a sample of the cleaned dataset
+head(cleaned_df)
 
-cleaned_df <- readRDS(data_location)
-
-
-
-# STATISTICAL ANALYSIS
+# Save the processed data
+saveRDS(cleaned_df, file = here("data", "processed-data", "cleaned_df.rds"))
 
 # Create a summary table by grouping the cleaned data by blood pressure status, ST depression status, and heart disease (target)
 summary_table <- cleaned_df %>%
@@ -26,12 +35,11 @@ summary_table <- cleaned_df %>%
 print(summary_table)
 
 summary_df = skimr::skim(summary_table)
-print(summary_table)
+print(summary_df)
+
 # save to file
 summarytable_file = here("results", "tables", "summarytable2.rds")
 saveRDS(summary_df, file = summarytable_file)
-
-
 
 # Interaction Visualization: Heatmap
 interaction_counts <- cleaned_df %>%
@@ -60,8 +68,6 @@ plot(p7)
 figure_file = here("results", "figures","interaction heatmap.png")
 ggsave(filename = figure_file, plot=p7)
 
-
-
 # Visualize CVD risk by blood pressure and ST depression status using faceted grouped Bar Chart
 p8 <- ggplot(interaction_counts, aes(x = elevated_BP, y = count, fill = target)) +
   geom_bar(stat = "identity", position = position_dodge(width = 0.7)) +
@@ -85,9 +91,8 @@ figure_file = here("results", "figures","CVD risk by BP and ST depression.png")
 ggsave(filename = figure_file, plot=p8)
 
 
-# INFERENTIAL STATISTICAL ANALYSIS
-
 # Chi-Square Tests
+
 # Create a contingency table for blood pressure status vs. heart disease
 table_bp_target <- table(cleaned_df$elevated_BP, cleaned_df$target)
 print(table_bp_target)
@@ -100,8 +105,6 @@ print(table_oldpeak_target)
 chisq_test_oldpeak <- chisq.test(table_oldpeak_target)
 print(chisq_test_oldpeak)
 
-
-
 # Logistic Regression Analysis
 
 # Convert target to a binary outcome for regression (1 = Heart Disease, 0 = No Heart Disease)
@@ -113,12 +116,18 @@ model <- glm(target_binary ~ elevated_BP + elevated_oldpeak,
              data = cleaned_df, family = binomial)
 summary(model)
 
+# save fit results table  
+table_file1 = here("results", "tables", "resulttable1.rds")
+saveRDS(model, file = table_file1)
 
 # Fit a logistic regression model including the interaction term
 model_interaction <- glm(target_binary ~ elevated_BP * elevated_oldpeak, 
                          data = cleaned_df, family = binomial)
 summary(model_interaction)
 
+# save fit results table  
+table_file1 = here("results", "tables", "resulttable2.rds")
+saveRDS(model_interaction, file = table_file1)
 
 # Extract Odds Ratios (OR) from the logistic regression model with interaction
 or_values <- exp(coef(model_interaction))
@@ -132,12 +141,14 @@ or_results <- data.frame(
 print("Odds Ratios (with 95% CI):")
 print(or_results)
 
+# save fit results table  
+table_file2 = here("results", "tables", "table2_odds_ratios.rds")
+saveRDS(or_results, file = table_file2)
+
 
 # Tidy the model output and compute odds ratios and 95% CI
 tidy_model <- tidy(model_interaction, exponentiate = TRUE, conf.int = TRUE)
 print(tidy_model)
-
-
 
 # Fit a log-binomial model to estimate Relative Risks (RR)
 rr_model <- glm(target_binary ~ elevated_BP + elevated_oldpeak, 
@@ -153,6 +164,9 @@ rr_results <- data.frame(
 print("Relative Risks (with 95% CI):")
 print(rr_results)
 
+# save fit results table  
+table_file3 = here("results", "tables", "table3_relative_risks.rds")
+saveRDS(rr_results, file = table_file3)
 
 
 # ROC Curve and AUC for the logistic regression model with interaction
@@ -161,7 +175,9 @@ plot(roc_curve, main = "ROC Curve for Logistic Regression Model", col = "blue", 
 auc_value <- auc(roc_curve)
 print(paste("AUC:", auc_value))
 
-
+# Save ROC plot
+roc_fig <- recordPlot()
+saveRDS(roc_fig, file = here("results", "figures", "figure1_roc_logistic_model.rds"))
 
 # Adjusted Logistic Regression Analysis including confounders (gender and fasting blood sugar)
 adjusted_model <- glm(target_binary ~ elevated_BP * elevated_oldpeak + gender + fastingbloodsugar, 
@@ -180,8 +196,11 @@ adj_or_results <- data.frame(
 print("Adjusted Odds Ratios (with 95% CI):")
 print(adj_or_results)
 
+# save fit results table  
+table_file4 = here("results", "tables", "table4_adjusted_odds_ratios.rds")
+saveRDS(adj_or_results, file = table_file4)
+
 # Tidy the adjusted model output and compute odds ratios and 95% CI
 tidy_adjusted_model <- tidy(adjusted_model, exponentiate = TRUE, conf.int = TRUE)
 print(tidy_adjusted_model)
-
-
+```

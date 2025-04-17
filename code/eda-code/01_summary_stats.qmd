@@ -1,0 +1,50 @@
+---
+title: "Summary statistics"
+author: "Murtaza"
+format: html
+editor: visual
+---
+
+```{r}
+# Calculate summary statistics for selected variables
+summary_stats <- cardio_df %>% 
+  summarise(
+    Age_min = min(age, na.rm = TRUE),
+    Age_max = max(age, na.rm = TRUE),
+    Age_mean = mean(age, na.rm = TRUE),
+    Age_sd = sd(age, na.rm = TRUE),
+
+    RestingBP_min = min(restingBP, na.rm = TRUE),
+    RestingBP_max = max(restingBP, na.rm = TRUE),
+    RestingBP_mean = mean(restingBP, na.rm = TRUE),
+    RestingBP_sd = sd(restingBP, na.rm = TRUE),
+
+    SerumCholestrol_min = min(serumcholestrol[serumcholestrol > 0], na.rm = TRUE),
+    SerumCholestrol_max = max(serumcholestrol[serumcholestrol > 0], na.rm = TRUE),
+    SerumCholestrol_mean = mean(serumcholestrol[serumcholestrol > 0], na.rm = TRUE),
+    SerumCholestrol_sd = sd(serumcholestrol[serumcholestrol > 0], na.rm = TRUE),
+
+    MaxHeartRate_min = min(maxheartrate, na.rm = TRUE),
+    MaxHeartRate_max = max(maxheartrate, na.rm = TRUE),
+    MaxHeartRate_mean = mean(maxheartrate, na.rm = TRUE),
+    MaxHeartRate_sd = sd(maxheartrate, na.rm = TRUE),
+
+    Oldpeak_min = min(oldpeak[oldpeak > 0], na.rm = TRUE),
+    Oldpeak_max = max(oldpeak, na.rm = TRUE),
+    Oldpeak_mean = mean(oldpeak, na.rm = TRUE),
+    Oldpeak_sd = sd(oldpeak, na.rm = TRUE)
+  )
+
+# Reshape into long format, then wide table
+summary_table_formatted <- summary_stats %>%
+  pivot_longer(cols = everything(), names_to = "stat", values_to = "value") %>%
+  separate(stat, into = c("Variable", "Statistic"), sep = "_(?=[^_]+$)") %>%
+  pivot_wider(names_from = Variable, values_from = value)
+
+# View formatted table
+summary_table_formatted
+
+# save to file
+summarytable_file = here("results", "tables", "table1_summary_statistics.rds")
+saveRDS(summary_table_formatted, file = summarytable_file)
+```

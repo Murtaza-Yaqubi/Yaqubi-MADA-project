@@ -1,0 +1,654 @@
+---
+title: "Final project"
+author: "Murtaza Yaqubi"
+format: html
+editor: visual
+---
+
+# Load necessary libraries
+
+```{r}
+library(knitr)
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(ggcorrplot)
+library(vcd)
+library(caret)        # For data partitioning and model training
+library(randomForest) # For Random Forest modeling
+library(tidyverse)
+library(tidymodels)
+library(broom)
+library(here)           # For file paths
+library(pROC)
+library(naniar)         # For gg_miss_var()
+```
+
+# PART 1: DATA IMPORT AND CLEANING
+
+```{r}
+# Import the dataset
+cardio_df <- read_csv(here("data", "raw-data", "Cardiovascular_Disease_Dataset.csv"))
+
+# Basic exploration of the dataset
+head(cardio_df)           # View the first few rows
+colnames(cardio_df)       # Check column names
+dim(cardio_df)            # Check dimensions (should be 1025 rows x 14 columns)
+summary(cardio_df)        # Get a summary of the data
+glimpse(cardio_df)        # Glimpse at the data structure
+
+# Visualize missing values for each variable
+gg_miss_var(cardio_df)    # Display number of NAs
+
+# Transform variables into suitable types and add descriptive labels
+cardio_df <- cardio_df %>%
+  mutate(
+    gender = factor(gender, levels = c(0, 1), labels = c("Female", "Male")), 
+    chestpain = factor(chestpain, levels = c(0, 1, 2, 3),
+                       labels = c("Typical Angina", "Atypical Angina", "Non-anginal Pain", "Asymptomatic")),
+    fastingbloodsugar = factor(fastingbloodsugar, levels = c(0, 1), labels = c("False", "True")),
+    restingrelectro = factor(restingrelectro, levels = c(0, 1, 2),
+                             labels = c("Normal", "ST-T Abnormality", "Left Ventricular Hypertrophy")),
+    exerciseangia = factor(exerciseangia, levels = c(0, 1), labels = c("No", "Yes")),
+    slope = factor(slope, levels = c(1, 2, 3), labels = c("Upsloping", "Flat", "Downsloping")),
+    target = factor(target, levels = c(0, 1), labels = c("No Heart Disease", "Heart Disease"))
+  )
+
+# Print the transformed dataset for verification
+print(cardio_df)
+```
+
+# PART 2: EXPLORATORY DATA ANALYSIS (EDA)
+
+```{r}
+# Calculate summary statistics for selected variables
+summary_stats <- cardio_df %>% 
+  summarise(
+    Age_min = min(age, na.rm = TRUE),
+    Age_max = max(age, na.rm = TRUE),
+    Age_mean = mean(age, na.rm = TRUE),
+    Age_sd = sd(age, na.rm = TRUE),
+
+    RestingBP_min = min(restingBP, na.rm = TRUE),
+    RestingBP_max = max(restingBP, na.rm = TRUE),
+    RestingBP_mean = mean(restingBP, na.rm = TRUE),
+    RestingBP_sd = sd(restingBP, na.rm = TRUE),
+
+    SerumCholestrol_min = min(serumcholestrol[serumcholestrol > 0], na.rm = TRUE),
+    SerumCholestrol_max = max(serumcholestrol[serumcholestrol > 0], na.rm = TRUE),
+    SerumCholestrol_mean = mean(serumcholestrol[serumcholestrol > 0], na.rm = TRUE),
+    SerumCholestrol_sd = sd(serumcholestrol[serumcholestrol > 0], na.rm = TRUE),
+
+    MaxHeartRate_min = min(maxheartrate, na.rm = TRUE),
+    MaxHeartRate_max = max(maxheartrate, na.rm = TRUE),
+    MaxHeartRate_mean = mean(maxheartrate, na.rm = TRUE),
+    MaxHeartRate_sd = sd(maxheartrate, na.rm = TRUE),
+
+    Oldpeak_min = min(oldpeak[oldpeak > 0], na.rm = TRUE),
+    Oldpeak_max = max(oldpeak, na.rm = TRUE),
+    Oldpeak_mean = mean(oldpeak, na.rm = TRUE),
+    Oldpeak_sd = sd(oldpeak, na.rm = TRUE)
+  )
+
+# Reshape into long format, then wide table
+summary_table_formatted <- summary_stats %>%
+  pivot_longer(cols = everything(), names_to = "stat", values_to = "value") %>%
+  separate(stat, into = c("Variable", "Statistic"), sep = "_(?=[^_]+$)") %>%
+  pivot_wider(names_from = Variable, values_from = value)
+
+# View formatted table
+summary_table_formatted
+
+# save to file
+summarytable_file = here("results", "tables", "table1_summary_statistics.rds")
+saveRDS(summary_table_formatted, file = summarytable_file)
+
+
+
+# Age distribution
+p1 <- ggplot(cardio_df, aes(x = age)) +
+  geom_histogram(aes(y = ..density..), bins = 30, color = "black", fill = "steelblue", alpha = 0.5) +
+  geom_density(color = "darkblue", linewidth = 1) +
+  labs(title = "Age Distribution", x = "Age", y = "Density") +
+  scale_x_continuous(breaks = seq(0, max(cardio_df$age, na.rm = TRUE) + 10, by = 10)) +
+  theme_bw()
+  
+plot(p1)
+figure_file = here("results", "figures","Age distribution.png")
+ggsave(filename = figure_file, plot=p1) 
+
+
+# Serum Cholesterol distribution (excluding zeros)
+p2 <- ggplot(subset(cardio_df, serumcholestrol > 0), aes(x = serumcholestrol)) +
+  geom_histogram(aes(y = ..density..), bins = 30, color = "black", fill = "forestgreen", alpha = 0.5) +
+  geom_density(color = "darkgreen", linewidth = 1) +
+  labs(title = "Serum Cholesterol Distribution", 
+       x = "Serum Cholesterol (mg/dL)", y = "Density") +
+  theme_minimal()
+
+plot(p2)
+figure_file = here("results", "figures","Serum Cholestrol.png")
+ggsave(filename = figure_file, plot=p2) 
+
+
+# Resting Blood Pressure distribution (excluding zeros)
+p3 <- ggplot(subset(cardio_df, restingBP > 0), aes(x = restingBP)) +
+  geom_histogram(aes(y = ..density..), bins = 30, color = "black", fill = "maroon", alpha = 0.5) +
+  geom_density(color = "darkred", linewidth = 1) +
+  labs(title = "Resting Blood Pressure Distribution", 
+       x = "Resting Blood Pressure (mmHG)", y = "Density") +
+  theme_bw()
+
+plot(p3)
+figure_file = here("results", "figures","Resting Blood Pressure Distribution.png")
+ggsave(filename = figure_file, plot=p3) 
+
+
+# Boxplot for resting blood pressure by heart disease status
+p4 <- ggplot(cardio_df, aes(x = target, y = restingBP, fill = target)) +
+  geom_boxplot() +
+  labs(title = "Resting Blood Pressure by Heart Disease Status",
+       x = "Heart Disease Status",
+       y = "Resting Blood Pressure (mmHg)") +
+  theme_minimal()
+
+plot(p4)
+figure_file = here("results", "figures","restingBP by heart disease status.png")
+ggsave(filename = figure_file, plot=p4) 
+
+
+# Violin plot for oldpeak by heart disease status
+p5 <- ggplot(cardio_df, aes(x = target, y = oldpeak, fill = target)) +
+  geom_violin(trim = FALSE) +
+  labs(title = "Oldpeak Distribution by Heart Disease Status",
+       x = "Heart Disease Status",
+       y = "Oldpeak") +
+  theme_minimal()
+
+plot(p5)
+figure_file = here("results", "figures","oldpeak by heart disease status.png")
+ggsave(filename = figure_file, plot=p5)
+
+
+# Create the correlation matrix for selected numeric variables
+numeric_vars <- cardio_df %>% 
+  select(age, restingBP, serumcholestrol, maxheartrate, oldpeak)
+cor_matrix <- cor(numeric_vars, use = "pairwise.complete.obs")
+
+# Plot the correlation matrix with ggcorrplot
+p6 <- ggcorrplot(cor_matrix, 
+           lab = TRUE,                         
+           lab_size = 3,                       
+           colors = c("blue", "white", "red"),  # Color gradient from blue (negative) to red (positive)
+           title = "Correlation Matrix", 
+           ggtheme = theme_minimal()) 
+
+plot(p6)
+figure_file = here("results", "figures","correlation matrix.png")
+ggsave(filename = figure_file, plot=p6)     
+```
+
+# PART 3: STATISTICAL ANALYSIS: DATA CLEANING, SUMMARIZATION, AND VISUALIZATION
+
+```{r}
+# Filter the data for individuals under 50 with normal cholesterol (<200 mg/dL) and create risk indicator variables for elevated blood pressure and ST depression.
+cleaned_df <- cardio_df %>%
+  filter(age < 50, serumcholestrol > 0, serumcholestrol < 200) %>%  
+  mutate(
+    # Create a binary variable for blood pressure:
+    # "Elevated" if restingBP is between 120 and 129; otherwise, "Otherwise"
+    elevated_BP = if_else(between(restingBP, 120, 129), "Elevated", "Otherwise"),
+    
+    # Create a binary indicator for ST depression:
+    # "Elevated" if oldpeak is greater than 1; otherwise, "Normal"
+    elevated_oldpeak = if_else(oldpeak > 1, "Elevated", "Normal")
+  ) %>% 
+  # Select the variables we want to keep
+  select(age, gender, chestpain, restingBP, serumcholestrol, fastingbloodsugar, 
+         maxheartrate, oldpeak, target, elevated_BP, elevated_oldpeak)
+
+# Print a sample of the cleaned dataset
+head(cleaned_df)
+
+# Save the processed data
+saveRDS(cleaned_df, file = "../../data/processed-data/cleaned_df.rds")
+
+# Create a summary table by grouping the cleaned data by blood pressure status, ST depression status, and heart disease (target)
+summary_table <- cleaned_df %>%
+  group_by(elevated_BP, elevated_oldpeak, target) %>%
+  summarise(count = n(), .groups = "drop")
+print(summary_table)
+
+summary_df = skimr::skim(summary_table)
+print(summary_table)
+# save to file
+summarytable_file = here("results", "tables", "summarytable2.rds")
+saveRDS(summary_df, file = summarytable_file)
+
+
+# Interaction Visualization: Heatmap
+interaction_counts <- cleaned_df %>%
+  group_by(elevated_BP, elevated_oldpeak, target) %>%
+  summarise(count = n(), .groups = "drop")
+
+p7 <- heatmap_plot <- ggplot(interaction_counts, aes(x = elevated_BP, y = elevated_oldpeak, fill = count)) +
+  geom_tile(color = "white", size = 0.5) +
+  geom_text(aes(label = count), color = "black", size = 5) +
+  facet_wrap(~ target, ncol = 2) +
+  scale_fill_gradient(low = "lightgreen", high = "forestgreen") +
+  labs(title = "Interaction between Blood Pressure and ST Depression",
+       subtitle = "By Heart Disease Status (Individuals <50 with Normal Cholesterol)",
+       x = "Blood Pressure Status",
+       y = "ST Depression Status",
+       fill = "Count") +
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    strip.text = element_text(face = "bold"),
+    plot.title = element_text(face = "bold", hjust = 0.5),
+    plot.subtitle = element_text(hjust = 0.5)
+  )
+
+plot(p7)
+figure_file = here("results", "figures","interaction heatmap.png")
+ggsave(filename = figure_file, plot=p7)
+
+# Visualize CVD risk by blood pressure and ST depression status using faceted grouped Bar Chart
+p8 <- ggplot(interaction_counts, aes(x = elevated_BP, y = count, fill = target)) +
+  geom_bar(stat = "identity", position = position_dodge(width = 0.7)) +
+  facet_wrap(~ elevated_oldpeak, ncol = 2, scales = "free_y") +
+  labs(title = "CVD Risk by Blood Pressure and ST Depression Status",
+       subtitle = "Individuals Under 50 with Normal Cholesterol (<200 mg/dL)",
+       x = "Blood Pressure Status",
+       y = "Count",
+       fill = "Heart Disease") +
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    strip.text = element_text(face = "bold"),
+    plot.title = element_text(face = "bold", hjust = 0.5),
+    plot.subtitle = element_text(hjust = 0.5),
+    legend.position = "bottom"
+  )
+
+plot(p8)
+figure_file = here("results", "figures","CVD risk by BP and ST depression.png")
+ggsave(filename = figure_file, plot=p8)
+```
+
+# PART 4a: INFERENTIAL STATISTICAL ANALYSIS
+
+# Chi-Square Tests
+
+```{r}
+# Create a contingency table for blood pressure status vs. heart disease
+table_bp_target <- table(cleaned_df$elevated_BP, cleaned_df$target)
+print(table_bp_target)
+chisq_test_bp <- chisq.test(table_bp_target)
+print(chisq_test_bp)
+
+# Create a contingency table for ST depression vs. heart disease
+table_oldpeak_target <- table(cleaned_df$elevated_oldpeak, cleaned_df$target)
+print(table_oldpeak_target)
+chisq_test_oldpeak <- chisq.test(table_oldpeak_target)
+print(chisq_test_oldpeak)
+```
+
+# Logistic Regression Analysis
+
+```{r}
+# Convert target to a binary outcome for regression (1 = Heart Disease, 0 = No Heart Disease)
+cleaned_df <- cleaned_df %>%
+  mutate(target_binary = if_else(target == "Heart Disease", 1, 0))
+
+# Fit a logistic regression model with elevated_BP and elevated_oldpeak as predictors
+model <- glm(target_binary ~ elevated_BP + elevated_oldpeak, 
+             data = cleaned_df, family = binomial)
+summary(model)
+
+# save fit results table  
+table_file1 = here("results", "tables", "resulttable1.rds")
+saveRDS(model, file = table_file1)
+
+# Fit a logistic regression model including the interaction term
+model_interaction <- glm(target_binary ~ elevated_BP * elevated_oldpeak, 
+                         data = cleaned_df, family = binomial)
+summary(model_interaction)
+
+# save fit results table  
+table_file1 = here("results", "tables", "resulttable2.rds")
+saveRDS(model_interaction, file = table_file1)
+```
+
+# Extract Odds Ratios (OR) from the logistic regression model with interaction
+
+```{r}
+or_values <- exp(coef(model_interaction))
+or_ci <- exp(confint(model_interaction))
+or_results <- data.frame(
+  Term = names(or_values),
+  OR = or_values,
+  CI_lower = or_ci[, 1],
+  CI_upper = or_ci[, 2]
+)
+print("Odds Ratios (with 95% CI):")
+print(or_results)
+
+# save fit results table  
+table_file2 = here("results", "tables", "table2_odds_ratios.rds")
+saveRDS(or_results, file = table_file2)
+
+
+# Tidy the model output and compute odds ratios and 95% CI
+tidy_model <- tidy(model_interaction, exponentiate = TRUE, conf.int = TRUE)
+print(tidy_model)
+```
+
+# Fit a log-binomial model to estimate Relative Risks (RR)
+
+```{r}
+rr_model <- glm(target_binary ~ elevated_BP + elevated_oldpeak, 
+                data = cleaned_df, family = binomial(link = "log"))
+rr_values <- exp(coef(rr_model))
+rr_ci <- exp(confint(rr_model))
+rr_results <- data.frame(
+  Term = names(rr_values),
+  RR = rr_values,
+  CI_lower = rr_ci[, 1],
+  CI_upper = rr_ci[, 2]
+)
+print("Relative Risks (with 95% CI):")
+print(rr_results)
+
+# save fit results table  
+table_file3 = here("results", "tables", "table3_relative_risks.rds")
+saveRDS(rr_results, file = table_file3)
+```
+
+# ROC Curve and AUC for the logistic regression model with interaction
+
+```{r}
+roc_curve <- roc(cleaned_df$target_binary, predict(model_interaction, type = "response"))
+plot(roc_curve, main = "ROC Curve for Logistic Regression Model", col = "blue", lwd = 2)
+auc_value <- auc(roc_curve)
+print(paste("AUC:", auc_value))
+
+# Save ROC plot
+roc_fig <- recordPlot()
+saveRDS(roc_fig, file = here("results", "figures", "figure1_roc_logistic_model.rds"))
+
+```
+
+# Adjusted Logistic Regression Analysis including confounders (gender and fasting blood sugar)
+
+```{r}
+adjusted_model <- glm(target_binary ~ elevated_BP * elevated_oldpeak + gender + fastingbloodsugar, 
+                      data = cleaned_df, family = binomial)
+summary(adjusted_model)
+
+# Extract Odds Ratios (OR) for the adjusted model
+adj_or_values <- exp(coef(adjusted_model))
+adj_or_ci <- exp(confint(adjusted_model))
+adj_or_results <- data.frame(
+  Term = names(adj_or_values),
+  OR = adj_or_values,
+  CI_lower = adj_or_ci[, 1],
+  CI_upper = adj_or_ci[, 2]
+)
+print("Adjusted Odds Ratios (with 95% CI):")
+print(adj_or_results)
+
+# save fit results table  
+table_file4 = here("results", "tables", "table4_adjusted_odds_ratios.rds")
+saveRDS(adj_or_results, file = table_file4)
+
+# Tidy the adjusted model output and compute odds ratios and 95% CI
+tidy_adjusted_model <- tidy(adjusted_model, exponentiate = TRUE, conf.int = TRUE)
+print(tidy_adjusted_model)
+```
+
+# PART 4b: MODEL BUILDING
+
+```{r}
+# Set seed for reproducibility
+rdmseed <- 123
+
+# Reset seed before modeling
+set.seed(rdmseed)
+
+cleaned_df <- cleaned_df %>%
+  mutate(target_binary = if_else(target == "Heart Disease", 1, 0))
+```
+
+# linear model
+
+```{r}
+# Fit a standard linear regression model using predictors
+lm_model <- linear_reg() %>%
+  fit(target_binary ~ elevated_BP + elevated_oldpeak, data = cleaned_df)
+
+# Get predictions from linear model and calculate RMSE
+cleaned_df$pred_lm <- predict(lm_model, new_data = cleaned_df)$.pred
+rmse(cleaned_df, truth = target_binary, estimate = pred_lm)
+
+# # Plot observed vs. predicted for Linear Model
+ggplot(cleaned_df, aes(x = target_binary, y = pred_lm)) +
+  geom_point(color = "darkblue", alpha = 0.7, size = 3) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "red", size = 1) +
+  scale_x_continuous(limits = c(0, 1)) +
+  scale_y_continuous(limits = c(0, 1))
+
+```
+
+# LASSO
+
+```{r}
+set.seed(rdmseed)
+
+# Prepare recipe for LASSO with normalization
+rec <- recipe(target_binary ~ elevated_BP + elevated_oldpeak, data = cleaned_df) %>%
+  step_dummy(elevated_BP, elevated_oldpeak) %>%   # Convert categorical predictors to dummies
+  step_normalize(all_numeric(), -all_outcomes())
+
+
+# Define LASSO model with a fixed penalty
+lasso_spec <- linear_reg(penalty = 0.1, mixture = 1) %>%
+  set_engine("glmnet")
+
+# Create a workflow and fit the LASSO model
+wf <- workflow() %>%
+  add_recipe(rec) %>%
+  add_model(lasso_spec)
+
+lasso_fit <- fit(wf, data = cleaned_df)
+cleaned_df$pred_lasso <- predict(lasso_fit, new_data = cleaned_df)$.pred
+rmse(cleaned_df, truth = target_binary, estimate = pred_lasso)
+
+
+# Plot observed vs. predicted for LASSO Model
+ggplot(cleaned_df, aes(x = target_binary, y = pred_lasso)) +
+  geom_point(color = "darkviolet", alpha = 0.7, size = 3) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "red", size = 1) +
+  scale_x_continuous(limits = c(0, 1)) +
+  scale_y_continuous(limits = c(0, 1))
+```
+
+# Random Forest
+
+```{r}
+set.seed(rdmseed)
+
+# Create a workflow and fit the Random Forest model
+rf_model <- rand_forest() %>%
+  set_mode("regression") %>%
+  set_engine("ranger", seed = rdmseed)
+
+rf_fit <- rf_model %>%
+  fit(target_binary ~ elevated_BP + elevated_oldpeak, data = cleaned_df)
+
+# Get predictions and evaluate model performance
+cleaned_df$pred_rf <- predict(rf_fit, cleaned_df)$.pred
+rmse(cleaned_df, truth = target_binary, estimate = pred_rf)
+
+# Save RMSEs from all models to a table
+rmse_df <- tibble(
+  Model = c("Linear", "LASSO", "Random Forest"),
+  RMSE = c(
+    rmse(cleaned_df, truth = target_binary, estimate = pred_lm)$.estimate,
+    rmse(cleaned_df, truth = target_binary, estimate = pred_lasso)$.estimate,
+    rmse(cleaned_df, truth = target_binary, estimate = pred_rf)$.estimate
+  )
+)
+saveRDS(rmse_df, file = here("results", "tables", "table5_model_rmse_comparison.rds"))
+
+
+# Plot observed vs. predicted for RF Model
+ggplot(cleaned_df, aes(x = target_binary, y = pred_rf)) +
+  geom_point(color = "darkgreen", alpha = 0.7, size = 3) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "red", size = 1) +
+  scale_x_continuous(limits = c(0, 1)) +
+  scale_y_continuous(limits = c(0, 1))
+
+```
+
+# Tuning the LASSO model (without cross-validation)
+
+```{r}
+set.seed(rdmseed)
+
+# Create a grid of penalty values for LASSO
+lasso_grid <- tibble(penalty = 10^seq(-5, 2, length.out = 50))
+
+# Define LASSO model with tunable penalty
+lasso_spec_tune <- linear_reg(penalty = tune()) %>%
+  set_engine("glmnet")
+
+# Create workflow and assign to lasso_tuning_workflow (new name)
+lasso_tuning_workflow <- workflow() %>%
+  add_model(lasso_spec_tune) %>%
+  add_recipe(rec)
+
+# Perform grid search without CV (apparent resampling)
+lasso_tune <- tune_grid(
+  lasso_tuning_workflow,
+  resamples = apparent(cleaned_df),
+  grid = lasso_grid,
+  metrics = metric_set(rmse)
+)
+
+# Extract tuning results
+lasso_tune_df <- as.data.frame(lasso_tune$.metrics)
+
+# Identify best LASSO penalty
+best_lasso <- lasso_tune_df %>% filter(.estimate == min(.estimate))
+print("Best LASSO Penalty (No CV):")
+print(best_lasso)
+
+# Plot LASSO tuning results
+ggplot(lasso_tune_df, aes(x = penalty, y = .estimate)) +
+  geom_line(size = 1, color = "steelblue") +
+  geom_point(size = 2, color = "firebrick") +
+  scale_x_log10() +
+  labs(
+    x = "Penalty (log scale)",
+    y = "RMSE",
+    title = "LASSO Tuning (No Cross-validation)",
+    subtitle = "Using apparent resampling"
+  ) +
+  theme_minimal()
+
+# Save LASSO tuning plot
+lasso_tune_plot <- last_plot()
+ggsave(filename = here("results", "figures", "figure2_lasso_tuning_plot.png"), plot = lasso_tune_plot)
+```
+
+# Tuning for our Random Forest model (without cross-validation)
+
+```{r}
+# Create tuning grid for mtry and min_n
+rf_grid <- grid_regular(
+  mtry(range = c(1, 7)),
+  min_n(range = c(1, 21)),
+  levels = 7
+)
+
+# Define random forest model with tunable parameters
+rf_spec_tune <- rand_forest(
+  mtry = tune(),
+  min_n = tune(),
+  trees = 300
+) %>%
+  set_mode("regression") %>%
+  set_engine("ranger", seed = rdmseed)
+
+# Build workflow
+rf_wf_tune <- workflow() %>%
+  add_model(rf_spec_tune) %>%
+  add_recipe(rec)
+
+# Perform RF tuning without CV
+rf_tune <- tune_grid(
+  rf_wf_tune,
+  resamples = apparent(cleaned_df),
+  grid = rf_grid,
+  metrics = metric_set(rmse)
+)
+
+rf_tune_df <- as.data.frame(rf_tune$.metrics)
+
+# Identify best RF tuning parameters
+best_rf <- rf_tune_df %>% filter(.estimate == min(.estimate))
+print("Best Random Forest Parameters (No CV):")
+print(best_rf)
+
+# Plot RF tuning results
+ggplot(rf_tune_df, aes(x = mtry, y = min_n, fill = .estimate)) +
+  geom_tile() +
+  scale_fill_viridis_c() +
+  labs(
+    title = "Random Forest Tuning (No Cross-validation)",
+    x = "mtry",
+    y = "min_n",
+    fill = "RMSE"
+  ) +
+  theme_minimal()
+
+# Save Random Forest tuning heatmap
+rf_tune_plot <- last_plot()
+ggsave(filename = here("results", "figures", "figure3_rf_tuning_heatmap.png"), plot = rf_tune_plot)
+
+```
+
+# Cross-validation for our LASSO model tuning
+
+```{r}
+set.seed(rdmseed)
+
+# Create 5-fold CV with 5 repeats
+cv_folds <- vfold_cv(cleaned_df, v = 5, repeats = 5)
+
+
+# Tune LASSO using CV
+lasso_tune_cv <- tune_grid(
+  lasso_tuning_workflow,
+  resamples = cv_folds,
+  grid = lasso_grid,
+  metrics = metric_set(rmse)
+)
+
+autoplot(lasso_tune_cv)
+```
+
+# Cross-validation tuning for our random forest model
+
+```{r}
+# Tune RF using CV
+rf_tune_cv <- tune_grid(
+  rf_wf_tune,
+  resamples = cv_folds,
+  grid = rf_grid,
+  metrics = metric_set(rmse)
+)
+autoplot(rf_tune_cv)
+
+```
