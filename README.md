@@ -74,6 +74,8 @@ This file, which provides an overview of the repository and guidance on how to g
 
 -   Run the scripts in analysis-code to perform the main statistical and predictive analyses.
 
+-   OR run the script in the full_code folder for the comprehensive script that combines all steps of the data analysis pipeline into one document.
+
 5.  View the Results: Check the results folder for generated figures and tables, and refer to the products folder for the final manuscript (manuscript.qmd) and accompanying document (manuscript.docx).
 
 ## Contributing
