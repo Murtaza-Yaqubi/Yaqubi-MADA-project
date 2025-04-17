@@ -20,6 +20,10 @@ Houses scripts for the main statistical and predictive modeling analyses, such a
 
 Includes scripts for data cleaning, transformation, and processing. This is where the raw data is converted into a form ready for analysis.
 
+-   full_code:
+
+This folder contains a single, comprehensive Quarto script that combines all steps of the data analysis pipeline into one document.
+
 ### data:
 
 Contains all data files relevant to the project, divided into:
