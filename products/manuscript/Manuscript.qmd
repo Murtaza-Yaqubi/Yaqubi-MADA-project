@@ -56,7 +56,7 @@ The central research question is whether individuals under 50 with normal choles
 
 ## Study Population and Data Source
 
-We analyzed 1,025 de-identified records from a multispecialty hospital in India (Mendeley Data, April 2021). Inclusion criteria were: age \<50 years, cholesterol \>0 and \<200 mg/dL. Records missing key variables were excluded. The final analytic sample included 476 participants.
+We analyzed 1,025 de-identified records from a multispecialty hospital in India ([Mendeley Data, April 2021](https://data.mendeley.com/datasets/dzz48mvjht/1)). Inclusion criteria were: age \<50 years, cholesterol \>0 and \<200 mg/dL. Records missing key variables were excluded. The final analytic sample included 476 participants.
 
 ## Variable Definitions
 
