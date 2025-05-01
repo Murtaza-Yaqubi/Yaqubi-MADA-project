@@ -1,0 +1,462 @@
+---
+title: "Final Project full code"
+author: "Murtaza Yaqubi"
+format: html
+editor: visual
+---
+
+# 1. Setup
+
+```{r}
+set.seed(123)  # Global seed for reproducibility
+```
+
+# Load core libraries
+
+```{r}
+library(tidyverse)    # data manipulation & ggplot2
+library(here)         # file paths
+library(ggcorrplot)   # correlation plots
+library(tidymodels)   # modeling framework
+library(broom)        # tidying model outputs
+library(pROC)         # ROC analysis
+library(ggthemes)     # themes
+```
+
+# 2. Data Import & Initial Cleaning
+
+```{r}
+# Import raw data
+df_raw <- read_csv(here("data", "raw-data", "Cardiovascular_Disease_Dataset.csv"))
+
+# Rename columns for clarity
+df <- df_raw %>%
+  rename(
+    patient_id         = patientid,
+    age                = age,
+    gender             = gender,
+    chest_pain_type    = chestpain,
+    resting_bp         = restingBP,
+    cholesterol        = serumcholestrol,
+    fasting_blood_sugar= fastingbloodsugar,
+    resting_ecg        = restingrelectro,
+    max_heart_rate     = maxheartrate,
+    exercise_angina    = exerciseangia,
+    st_depression      = oldpeak,
+    slope              = slope,
+    num_major_vessels  = noofmajorvessels,
+    outcome            = target
+  )
+
+# Recode 0 cholesterol as NA and out-of-range (>564) to NA
+df <- df %>%
+  mutate(
+    cholesterol = na_if(cholesterol, 0),
+    cholesterol = if_else(cholesterol > 564, NA_real_, cholesterol)
+  )
+
+# Convert binary/nominal variables to factors with labels
+df <- df %>%
+  mutate(
+    gender           = factor(gender, levels = c(0,1), labels = c("Female","Male")),
+    chest_pain_type  = factor(chest_pain_type, levels = 0:3,
+                              labels = c("Typical Angina","Atypical","Non-anginal","Asymptomatic")),
+    fasting_blood_sugar = factor(fasting_blood_sugar, levels = c(0,1), labels = c("False","True")),
+    resting_ecg      = factor(resting_ecg, levels=0:2,
+                              labels=c("Normal","ST-T Abnormality","LV Hypertrophy")),
+    exercise_angina  = factor(exercise_angina, levels=c(0,1), labels=c("No","Yes")),
+    slope            = factor(slope, levels=1:3, labels=c("Upsloping","Flat","Downsloping")),
+    outcome          = factor(outcome, levels=c(0,1), labels=c("NoDisease","Disease"))
+  )
+```
+
+# 3. Study Population Filter
+
+```{r}
+# Focus: age < 50 & normal cholesterol (<200)
+df_clean <- df %>%
+  filter(age < 50, !is.na(cholesterol), cholesterol < 200) %>%
+  mutate(
+    bp_status = factor(if_else(between(resting_bp, 120, 129), "Elevated", "Normal")),
+    st_status = factor(if_else(st_depression > 1, "Elevated", "Normal"))
+  )
+
+# Save cleaned data
+saveRDS(df_clean, here("data","processed-data","cleaned_df.rds"))
+```
+
+# 4. Exploratory Data Analysis
+
+```{r}
+# Summary stats
+summary_stats_tbl <- df_clean %>%
+  summarise(
+    Age_min           = min(age, na.rm = TRUE),
+    Age_max           = max(age, na.rm = TRUE),
+    Age_mean          = mean(age, na.rm = TRUE),
+    Age_sd            = sd(age, na.rm = TRUE),
+    RestingBP_min     = min(resting_bp, na.rm = TRUE),
+    RestingBP_max     = max(resting_bp, na.rm = TRUE),
+    RestingBP_mean    = mean(resting_bp, na.rm = TRUE),
+    RestingBP_sd      = sd(resting_bp, na.rm = TRUE),
+    Chol_min          = min(cholesterol, na.rm = TRUE),
+    Chol_max          = max(cholesterol, na.rm = TRUE),
+    Chol_mean         = mean(cholesterol, na.rm = TRUE),
+    Chol_sd           = sd(cholesterol, na.rm = TRUE),
+    HR_min            = min(max_heart_rate, na.rm = TRUE),
+    HR_max            = max(max_heart_rate, na.rm = TRUE),
+    HR_mean           = mean(max_heart_rate, na.rm = TRUE),
+    HR_sd             = sd(max_heart_rate, na.rm = TRUE),
+    ST_min            = min(st_depression, na.rm = TRUE),
+    ST_max            = max(st_depression, na.rm = TRUE),
+    ST_mean           = mean(st_depression, na.rm = TRUE),
+    ST_sd             = sd(st_depression, na.rm = TRUE)
+  ) %>%
+  pivot_longer(everything(), names_to = "stat", values_to = "value") %>%
+  separate(stat, into = c("Variable","Statistic"), sep = "_(?=[^_]+$)") %>%
+  pivot_wider(names_from = Variable, values_from = value)
+
+print(summary_stats_tbl)
+
+# Save summary table
+saveRDS(summary_stats_tbl, here("results","tables","table1_summary_statistics.rds"))
+
+
+## Visualizations
+
+# Correlation matrix
+p_corr <- ggcorrplot(cor(df_clean %>% 
+                 select(age, resting_bp, cholesterol, max_heart_rate, st_depression),
+                         use = "pairwise.complete.obs"), lab=TRUE)
+print(p_corr)
+ggsave(filename = here("results","figures","fig1_correlation_matrix.png"), plot = p_corr, width = 5, height = 5)
+
+
+# Histogram of Age 
+p_age <- df_clean %>% 
+  ggplot(aes(age)) + 
+  geom_histogram(bins = 30, fill = "skyblue", color = "black") + 
+  geom_density(aes(y = after_stat(count) * 1.2), color = "red", size = 1.2) +
+  labs(
+    title = "Distribution of Age",
+    x     = "Age (years)",
+    y     = "Count"
+  ) +
+  theme_wsj() +
+  theme(
+    # re-enable & style the axis titles
+    axis.title.x = element_text(size = 12, face = "bold", colour = "black"),
+    axis.title.y = element_text(size = 12, face = "bold", colour = "black"),
+    plot.title   = element_text(size = 18, face = "bold", hjust = 0.5)
+  )
+print(p_age)
+ggsave(filename = here("results","figures","fig2_age_histogram.png"), plot = p_age, width = 10, height = 5)
+
+# Histogram of Cholesterol 
+p_chol <- df_clean %>% 
+  ggplot(aes(cholesterol)) + 
+  geom_histogram(bins = 30, fill = "gold", color = "black") + 
+  geom_density(aes(y = after_stat(count) * 1.2), color = "red", size = 1.2) +
+  labs(
+    title = "Distribution of Cholesterol",
+    x     = "Cholesterol Level (mg/dL)",
+    y     = "Count"
+  ) +
+  theme_wsj() +
+  theme(
+    axis.title.x = element_text(size = 12, face = "bold", colour = "black"),
+    axis.title.y = element_text(size = 12, face = "bold", colour = "black"),
+    plot.title   = element_text(size = 18, face = "bold", hjust = 0.5)
+  )
+print(p_chol)
+ggsave(filename = here("results","figures", "fig3_cholesterol_histogram.png"), plot = p_chol, width = 10, height = 5)
+
+
+# Barplot of CVD prevalence by BP status
+p_bp <- ggplot(df_clean, aes(x = bp_status, fill = outcome)) +
+  geom_bar(position = "fill", width = 0.6) +
+  scale_y_continuous(labels = scales::percent_format()) +
+  labs(
+    title = "CVD Prevalence by Blood Pressure Status",
+    x     = "Blood Pressure Status",
+    y     = "Percent of Individuals",
+    fill  = "CVD"
+  ) +
+  theme_wsj() +
+  theme(
+    axis.title.x = element_text(size = 10),
+    axis.title.y = element_text(size = 10),
+    plot.title   = element_text(size = 18, face = "bold", hjust = 0.5)
+  )
+print(p_bp)
+ggsave(filename = here("results","figures","fig4_bp_barplot.png"), plot = p_bp, width = 8, height = 5)
+
+# Barplot of CVD prevalence by ST-Depression status
+p_st <- ggplot(df_clean, aes(x = st_status, fill = outcome)) +
+  geom_bar(position = "fill", width = 0.6) +
+  scale_y_continuous(labels = scales::percent_format()) +
+  labs(title = "CVD Prevalence by ST-Depression Status",
+       x = "ST-Depression Status", y = "Percent of Individuals", fill = "CVD") +
+  theme_wsj() +
+  theme(
+    axis.title.x = element_text(size = 10),
+    axis.title.y = element_text(size = 10),
+    plot.title   = element_text(size = 18, face = "bold", hjust = 0.5)
+  )
+print(p_st)
+ggsave(filename = here("results","figures","fig5_st_barplot.png"), plot = p_st, width = 8, height = 5)
+
+# Interaction Heatmap: counts by BP & ST-Depression, faceted by CVD
+data_heat <- df_clean %>% count(bp_status, st_status, outcome)
+
+p_heat <- ggplot(data_heat, aes(x = bp_status, y = st_status, fill = n)) +
+  geom_tile(color = "white") +
+  geom_text(aes(label = n), size = 4) +
+  facet_wrap(~ outcome) +
+  labs(
+    title = "Counts by BP & ST Status (facet by Disease)",
+    x = "BP Status",
+    y = "ST Status",
+    fill = "Count"
+  ) +
+  theme_wsj() +
+  theme(
+    axis.title.x = element_text(size = 10),
+    axis.title.y = element_text(size = 10),
+    plot.title   = element_text(size = 15, face = "bold", hjust = 0.5)
+  )
+print(p_heat)
+ggsave(
+  filename = here("results", "figures", "fig6_interaction_heatmap.png"), plot = p_heat, width = 8, height = 5)
+
+
+# Boxplot of age distribution by CVD within BP categories
+p_box <- ggplot(df_clean, aes(x = bp_status, y = age, fill = outcome)) +
+  geom_boxplot(alpha = 0.7) +
+  labs(title = "Age Distribution by CVD Status within BP Categories",
+       x = "Blood Pressure Status", y = "Age (years)", fill = "CVD") +
+  theme_wsj() +
+  theme(
+    axis.title.x = element_text(size = 10),
+    axis.title.y = element_text(size = 10),
+    plot.title   = element_text(size = 15, face = "bold", hjust = 0.5)
+  )
+print(p_box)
+ggsave(filename = here("results","figures","fig7_box_age_bp.png"), plot = p_box, width = 8, height = 5)
+
+# Scatterplot of ST-Depression vs. resting BP by CVD status
+p_scatter <- ggplot(df_clean, aes(x = resting_bp, y = st_depression, color = outcome)) +
+  geom_point(alpha = 1, size = 3) +
+  geom_smooth(method = "loess", se = FALSE) +
+  labs(title = "ST-Depression vs. Resting BP by CVD Status",
+       x = "Resting Blood Pressure (mmHg)", y = "ST-Depression (oldpeak)", color = "CVD") +
+  theme_wsj() +
+  theme(
+    axis.title.x = element_text(size = 10),
+    axis.title.y = element_text(size = 10),
+    plot.title   = element_text(size = 18, face = "bold", hjust = 0.5)
+  )
+print(p_scatter)
+ggsave(filename = here("results","figures","fig8_scatter_st_bp.png"), plot = p_scatter, width = 8, height = 5)
+```
+
+# 5. Inferential Analysis
+
+```{r}
+# Numeric outcome
+df_inf <- df_clean %>% mutate(outcome_num = if_else(outcome == "Disease", 1L, 0L))
+
+# Chi-square tests
+chisq_bp <- chisq.test(table(df_inf$bp_status, df_inf$outcome))
+chisq_st <- chisq.test(table(df_inf$st_status, df_inf$outcome))
+
+# Save chi-square results to tables
+chisq_bp_tbl <- broom::tidy(chisq_bp)
+saveRDS(chisq_bp_tbl, here("results","tables","table2_chisq_bp.rds"))
+chisq_st_tbl <- broom::tidy(chisq_st)
+saveRDS(chisq_st_tbl, here("results","tables","table3_chisq_st.rds"))
+
+# Print tests
+print(chisq_bp)
+print(chisq_st)
+
+# Logistic base model
+mod_base <- glm(outcome_num ~ bp_status + st_status, data=df_inf, family=binomial)
+base_coef <- summary(mod_base)$coefficients
+or_base <- exp(base_coef[ ,"Estimate"])
+ci_base_l <- exp(base_coef[ ,"Estimate"] - 1.96*base_coef[ ,"Std. Error"])
+ci_base_u <- exp(base_coef[ ,"Estimate"] + 1.96*base_coef[ ,"Std. Error"])
+tbl_base_or <- tibble(Term = rownames(base_coef), OR = or_base, CI_low = ci_base_l, CI_up = ci_base_u)
+
+# Save base-model ORs
+saveRDS(tbl_base_or, here("results","tables","table4_or_base_model.rds"))
+print(tbl_base_or)
+
+
+# Interaction model
+mod_int <- glm(outcome_num ~ bp_status*st_status, data=df_inf, family=binomial)
+int_coef <- summary(mod_int)$coefficients
+or_int <- exp(int_coef[ ,"Estimate"])
+ci_int_l <- exp(int_coef[ ,"Estimate"] - 1.96*int_coef[ ,"Std. Error"])
+ci_int_u <- exp(int_coef[ ,"Estimate"] + 1.96*int_coef[ ,"Std. Error"])
+tbl_int_or <- tibble(Term = rownames(int_coef), OR = or_int, CI_low = ci_int_l, CI_up = ci_int_u)
+
+# Save interaction-model ORs
+saveRDS(tbl_int_or, here("results","tables","table5_or_interaction_model.rds"))
+print(tbl_int_or)
+
+
+# Adjusted model
+mod_adj <- glm(outcome_num ~ bp_status*st_status + gender + fasting_blood_sugar, data=df_inf, family=binomial)
+adj_coef <- summary(mod_adj)$coefficients
+or_adj <- exp(adj_coef[ ,"Estimate"])
+ci_adj_l <- exp(adj_coef[ ,"Estimate"] - 1.96*adj_coef[ ,"Std. Error"])
+ci_adj_u <- exp(adj_coef[ ,"Estimate"] + 1.96*adj_coef[ ,"Std. Error"])
+tbl_adj_or <- tibble(Term = rownames(adj_coef), OR = or_adj, CI_low = ci_adj_l, CI_up = ci_adj_u)
+
+# Save adjusted-model ORs
+saveRDS(tbl_adj_or, here("results","tables","table6_or_adjusted_model.rds"))
+print(tbl_adj_or)
+
+
+# ROC safeguard
+preds_int <- predict(mod_int, type = "response")
+if (length(unique(preds_int)) > 2 && length(unique(df_inf$outcome_num)) == 2) {
+  auc_val <- auc(roc(df_inf$outcome_num, preds_int))
+  print(paste("AUC:", round(auc_val, 3)))
+  
+  # Save AUC value for interaction model
+  auc_tbl <- tibble(Model = "Interaction_Model", AUC = auc_val)
+  saveRDS(auc_tbl, here("results", "tables", "table7_auc_interaction_model.rds"))
+} else message("ROC not generated: single class or no variability")
+
+
+# Recreate ROC object for interaction model
+roc_int <- roc(df_inf$outcome_num, preds_int)
+
+# Annotate and save ROC plot with AUC on-plot
+ggroc(roc_int, legacy.axes = TRUE, color = "red") +
+  labs(
+    title = "ROC Curve for Interaction Model",
+    x     = "False Positive Rate",
+    y     = "True Positive Rate"
+  ) +
+  annotate(
+    "text",
+    x = 0.6, y = 0.2,
+    label = paste("AUC =", round(auc_val, 3)),
+    hjust = 0,
+    size = 5,
+    color = "black"
+  ) +
+  theme_wsj() +
+  theme(
+    plot.title = element_text(size = 18, face = "bold", hjust = 0.5)
+  ) -> auc_plot_annotated
+
+# Save annotated ROC plot
+ggsave(
+  filename = here("results", "figures", "fig9_roc_interaction_annotated.png"),
+  plot     = auc_plot_annotated,
+  width    = 10,
+  height   = 5,
+  units    = "in",
+  dpi      = 300
+)
+
+plot(auc_plot_annotated)
+```
+
+# 6. Predictive Modeling
+
+```{r}
+# Prepare data for modeling
+set.seed(123)
+df_mod <- df_inf %>% 
+  mutate(outcome = factor(outcome, levels=c("NoDisease","Disease")))
+
+# Train-test split
+set.seed(123)
+data_split <- initial_split(df_mod, prop=0.7, strata=outcome)
+train <- training(data_split); 
+test <- testing(data_split)
+
+# Recipe 
+rec <- recipe(outcome ~ bp_status + st_status, data=train) %>% 
+  step_dummy(all_nominal_predictors())
+```
+
+# Logistic regression model
+
+```{r}
+set.seed(123)
+log_spec  <- logistic_reg() %>% set_engine("glm") %>% set_mode("classification")
+log_wf    <- workflow() %>% add_model(log_spec) %>% add_recipe(rec)
+log_fit   <- fit(log_wf, data = train)
+log_preds <- predict(log_fit, test, type = "prob") %>% bind_cols(test)
+log_auc   <- roc_auc(log_preds, truth = outcome, `.pred_Disease`)
+log_acc   <- accuracy(predict(log_fit, test, type = "class") %>% bind_cols(test), truth = outcome, estimate = .pred_class)
+
+# Save logistic modeling results
+saveRDS(log_auc, here("results", "tables", "logistic_auc.rds"))
+saveRDS(log_acc, here("results", "tables", "logistic_accuracy.rds"))
+print(log_auc)
+print(log_acc)
+
+```
+
+# LASSO logistic
+
+```{r}
+tune_ctrl  <- vfold_cv(train, v = 5)
+set.seed(123)
+lasso_spec <- logistic_reg(penalty = tune(), mixture = 1) %>% set_engine("glmnet") %>% set_mode("classification")
+lasso_wf   <- workflow() %>% add_model(lasso_spec) %>% add_recipe(rec)
+lasso_res  <- tune_grid(lasso_wf, resamples = tune_ctrl, grid = 20, metrics = metric_set(roc_auc))
+best_lasso <- select_best(lasso_res, metric = "roc_auc")
+lasso_final<- finalize_workflow(lasso_wf, best_lasso)
+lasso_fit  <- fit(lasso_final, data = train)
+lasso_preds<- predict(lasso_fit, test, type = "prob") %>% bind_cols(test)
+lasso_auc  <- roc_auc(lasso_preds, truth = outcome, `.pred_Disease`)
+lasso_acc  <- accuracy(predict(lasso_fit, test, type = "class") %>% bind_cols(test), truth = outcome, estimate = .pred_class)
+
+# Save LASSO modeling results
+saveRDS(lasso_auc, here("results", "tables", "lasso_auc.rds"))
+saveRDS(lasso_acc, here("results", "tables", "lasso_accuracy.rds"))
+print(lasso_auc)
+print(lasso_acc)
+```
+
+# Random forest
+
+```{r}
+set.seed(123)
+rf_spec <- rand_forest(mtry = tune(), min_n = tune(), trees = 500) %>% set_engine("ranger") %>% set_mode("classification")
+rf_wf   <- workflow() %>% add_model(rf_spec) %>% add_recipe(rec)
+rf_res  <- tune_grid(rf_wf, resamples = tune_ctrl, grid = 20, metrics = metric_set(roc_auc))
+best_rf <- select_best(rf_res, metric = "roc_auc")
+rf_final<- finalize_workflow(rf_wf, best_rf)
+rf_fit  <- fit(rf_final, data = train)
+rf_preds<- predict(rf_fit, test, type = "prob") %>% bind_cols(test)
+rf_auc  <- roc_auc(rf_preds, truth = outcome, `.pred_Disease`)
+rf_acc  <- accuracy(predict(rf_fit, test, type = "class") %>% bind_cols(test), truth = outcome, estimate = .pred_class)
+
+# Save Random Forest modeling results
+saveRDS(rf_auc, here("results", "tables", "rf_auc.rds"))
+saveRDS(rf_acc, here("results", "tables", "rf_accuracy.rds"))
+print(rf_auc)
+print(rf_acc)
+```
+
+# 7. Model Comparison
+
+```{r}
+model_comp <- tibble(
+  Model    = c("Logistic", "LASSO", "Random Forest"),
+  AUC      = c(log_auc$.estimate, lasso_auc$.estimate, rf_auc$.estimate),
+  Accuracy = c(log_acc$.estimate, lasso_acc$.estimate, rf_acc$.estimate)
+)
+# Save model comparison table
+saveRDS(model_comp, here("results", "tables", "model_comparison.rds"))
+print(model_comp)
+```

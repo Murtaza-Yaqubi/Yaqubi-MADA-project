@@ -1,0 +1,223 @@
+---
+title: "Inferential Analysis"
+author: "Murtaza Yaqubi"
+format: html
+editor: visual
+---
+
+## Load/install core libraries
+
+```{r}
+library(here)
+library(readr)
+library(dplyr)
+library(tidyverse)
+```
+
+# Read in the data
+
+```{r}
+df_clean <- readRDS(here("data","processed-data","cleaned_df.rds"))
+```
+
+# Inferential Analysis
+
+```{r}
+# Numeric outcome
+df_inf <- df_clean %>% 
+  mutate(outcome_num = if_else(outcome == "Disease", 1L, 0L))
+
+# Chi-square tests
+chisq_bp <- chisq.test(table(df_inf$bp_status, df_inf$outcome))
+chisq_st <- chisq.test(table(df_inf$st_status, df_inf$outcome))
+
+# Save chi-square results to tables
+chisq_bp_tbl <- broom::tidy(chisq_bp)
+saveRDS(chisq_bp_tbl, here("results","tables","table2_chisq_bp.rds"))
+chisq_st_tbl <- broom::tidy(chisq_st)
+saveRDS(chisq_st_tbl, here("results","tables","table3_chisq_st.rds"))
+
+# Print tests
+print(chisq_bp)
+print(chisq_st)
+
+# Logistic base model
+mod_base <- glm(outcome_num ~ bp_status + st_status, data=df_inf, family=binomial)
+base_coef <- summary(mod_base)$coefficients
+or_base <- exp(base_coef[ ,"Estimate"])
+ci_base_l <- exp(base_coef[ ,"Estimate"] - 1.96*base_coef[ ,"Std. Error"])
+ci_base_u <- exp(base_coef[ ,"Estimate"] + 1.96*base_coef[ ,"Std. Error"])
+tbl_base_or <- tibble(Term = rownames(base_coef), OR = or_base, CI_low = ci_base_l, CI_up = ci_base_u)
+
+# Save base-model ORs
+saveRDS(tbl_base_or, here("results","tables","table4_or_base_model.rds"))
+print(tbl_base_or)
+
+
+# Interaction model
+mod_int <- glm(outcome_num ~ bp_status*st_status, data=df_inf, family=binomial)
+int_coef <- summary(mod_int)$coefficients
+or_int <- exp(int_coef[ ,"Estimate"])
+ci_int_l <- exp(int_coef[ ,"Estimate"] - 1.96*int_coef[ ,"Std. Error"])
+ci_int_u <- exp(int_coef[ ,"Estimate"] + 1.96*int_coef[ ,"Std. Error"])
+tbl_int_or <- tibble(Term = rownames(int_coef), OR = or_int, CI_low = ci_int_l, CI_up = ci_int_u)
+
+# Save interaction-model ORs
+saveRDS(tbl_int_or, here("results","tables","table5_or_interaction_model.rds"))
+print(tbl_int_or)
+
+
+# Adjusted model
+mod_adj <- glm(outcome_num ~ bp_status*st_status + gender + fasting_blood_sugar, data=df_inf, family=binomial)
+adj_coef <- summary(mod_adj)$coefficients
+or_adj <- exp(adj_coef[ ,"Estimate"])
+ci_adj_l <- exp(adj_coef[ ,"Estimate"] - 1.96*adj_coef[ ,"Std. Error"])
+ci_adj_u <- exp(adj_coef[ ,"Estimate"] + 1.96*adj_coef[ ,"Std. Error"])
+tbl_adj_or <- tibble(Term = rownames(adj_coef), OR = or_adj, CI_low = ci_adj_l, CI_up = ci_adj_u)
+
+# Save adjusted-model ORs
+saveRDS(tbl_adj_or, here("results","tables","table6_or_adjusted_model.rds"))
+print(tbl_adj_or)
+
+
+# ROC safeguard
+preds_int <- predict(mod_int, type = "response")
+if (length(unique(preds_int)) > 2 && length(unique(df_inf$outcome_num)) == 2) {
+  auc_val <- auc(roc(df_inf$outcome_num, preds_int))
+  print(paste("AUC:", round(auc_val, 3)))
+  
+  # Save AUC value for interaction model
+  auc_tbl <- tibble(Model = "Interaction_Model", AUC = auc_val)
+  saveRDS(auc_tbl, here("results", "tables", "table7_auc_interaction_model.rds"))
+} else message("ROC not generated: single class or no variability")
+
+
+# Recreate ROC object for interaction model
+roc_int <- roc(df_inf$outcome_num, preds_int)
+
+# Annotate and save ROC plot with AUC on-plot
+ggroc(roc_int, legacy.axes = TRUE, color = "red") +
+  labs(
+    title = "ROC Curve for Interaction Model",
+    x     = "False Positive Rate",
+    y     = "True Positive Rate"
+  ) +
+  annotate(
+    "text",
+    x = 0.6, y = 0.2,
+    label = paste("AUC =", round(auc_val, 3)),
+    hjust = 0,
+    size = 5,
+    color = "black"
+  ) +
+  theme_wsj() +
+  theme(
+    plot.title = element_text(size = 18, face = "bold", hjust = 0.5)
+  ) -> auc_plot_annotated
+
+# Save annotated ROC plot
+ggsave(
+  filename = here("results", "figures", "fig9_roc_interaction_annotated.png"),
+  plot     = auc_plot_annotated,
+  width    = 10,
+  height   = 5,
+  units    = "in",
+  dpi      = 300
+)
+
+plot(auc_plot_annotated)
+```
+
+# 6. Predictive Modeling
+
+```{r}
+# Prepare data for modeling
+set.seed(123)
+df_mod <- df_inf %>% 
+  mutate(outcome = factor(outcome, levels=c("NoDisease","Disease")))
+
+# Train-test split
+set.seed(123)
+data_split <- initial_split(df_mod, prop=0.7, strata=outcome)
+train <- training(data_split); 
+test <- testing(data_split)
+
+# Recipe 
+rec <- recipe(outcome ~ bp_status + st_status, data=train) %>% 
+  step_dummy(all_nominal_predictors())
+```
+
+# Logistic regression model
+
+```{r}
+set.seed(123)
+log_spec  <- logistic_reg() %>% set_engine("glm") %>% set_mode("classification")
+log_wf    <- workflow() %>% add_model(log_spec) %>% add_recipe(rec)
+log_fit   <- fit(log_wf, data = train)
+log_preds <- predict(log_fit, test, type = "prob") %>% bind_cols(test)
+log_auc   <- roc_auc(log_preds, truth = outcome, `.pred_Disease`)
+log_acc   <- accuracy(predict(log_fit, test, type = "class") %>% bind_cols(test), truth = outcome, estimate = .pred_class)
+
+# Save logistic modeling results
+saveRDS(log_auc, here("results", "tables", "logistic_auc.rds"))
+saveRDS(log_acc, here("results", "tables", "logistic_accuracy.rds"))
+print(log_auc)
+print(log_acc)
+
+```
+
+# LASSO logistic
+
+```{r}
+tune_ctrl  <- vfold_cv(train, v = 5)
+set.seed(123)
+lasso_spec <- logistic_reg(penalty = tune(), mixture = 1) %>% set_engine("glmnet") %>% set_mode("classification")
+lasso_wf   <- workflow() %>% add_model(lasso_spec) %>% add_recipe(rec)
+lasso_res  <- tune_grid(lasso_wf, resamples = tune_ctrl, grid = 20, metrics = metric_set(roc_auc))
+best_lasso <- select_best(lasso_res, metric = "roc_auc")
+lasso_final<- finalize_workflow(lasso_wf, best_lasso)
+lasso_fit  <- fit(lasso_final, data = train)
+lasso_preds<- predict(lasso_fit, test, type = "prob") %>% bind_cols(test)
+lasso_auc  <- roc_auc(lasso_preds, truth = outcome, `.pred_Disease`)
+lasso_acc  <- accuracy(predict(lasso_fit, test, type = "class") %>% bind_cols(test), truth = outcome, estimate = .pred_class)
+
+# Save LASSO modeling results
+saveRDS(lasso_auc, here("results", "tables", "lasso_auc.rds"))
+saveRDS(lasso_acc, here("results", "tables", "lasso_accuracy.rds"))
+print(lasso_auc)
+print(lasso_acc)
+```
+
+# Random forest
+
+```{r}
+set.seed(123)
+rf_spec <- rand_forest(mtry = tune(), min_n = tune(), trees = 500) %>% set_engine("ranger") %>% set_mode("classification")
+rf_wf   <- workflow() %>% add_model(rf_spec) %>% add_recipe(rec)
+rf_res  <- tune_grid(rf_wf, resamples = tune_ctrl, grid = 20, metrics = metric_set(roc_auc))
+best_rf <- select_best(rf_res, metric = "roc_auc")
+rf_final<- finalize_workflow(rf_wf, best_rf)
+rf_fit  <- fit(rf_final, data = train)
+rf_preds<- predict(rf_fit, test, type = "prob") %>% bind_cols(test)
+rf_auc  <- roc_auc(rf_preds, truth = outcome, `.pred_Disease`)
+rf_acc  <- accuracy(predict(rf_fit, test, type = "class") %>% bind_cols(test), truth = outcome, estimate = .pred_class)
+
+# Save Random Forest modeling results
+saveRDS(rf_auc, here("results", "tables", "rf_auc.rds"))
+saveRDS(rf_acc, here("results", "tables", "rf_accuracy.rds"))
+print(rf_auc)
+print(rf_acc)
+```
+
+# 7. Model Comparison
+
+```{r}
+model_comp <- tibble(
+  Model    = c("Logistic", "LASSO", "Random Forest"),
+  AUC      = c(log_auc$.estimate, lasso_auc$.estimate, rf_auc$.estimate),
+  Accuracy = c(log_acc$.estimate, lasso_acc$.estimate, rf_acc$.estimate)
+)
+# Save model comparison table
+saveRDS(model_comp, here("results", "tables", "model_comparison.rds"))
+print(model_comp)
+```

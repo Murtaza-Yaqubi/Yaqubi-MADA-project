@@ -1,0 +1,78 @@
+---
+title: "Processing code"
+author: "Murtaza Yaqubi"
+format: html
+editor: visual
+---
+
+
+# Load/instal core libraries
+
+```{r}
+library(readr)
+library(here)
+library(dplyr)
+library(tidyverse)
+```
+
+# 2. Data Import & Initial Cleaning
+
+```{r}
+# Import raw data
+df_raw <- read_csv(here("data", "raw-data", "Cardiovascular_Disease_Dataset.csv"))
+
+# Rename columns for clarity
+df <- df_raw %>%
+  rename(
+    patient_id         = patientid,
+    age                = age,
+    gender             = gender,
+    chest_pain_type    = chestpain,
+    resting_bp         = restingBP,
+    cholesterol        = serumcholestrol,
+    fasting_blood_sugar= fastingbloodsugar,
+    resting_ecg        = restingrelectro,
+    max_heart_rate     = maxheartrate,
+    exercise_angina    = exerciseangia,
+    st_depression      = oldpeak,
+    slope              = slope,
+    num_major_vessels  = noofmajorvessels,
+    outcome            = target
+  )
+
+# Recode 0 cholesterol as NA and out-of-range (>564) to NA
+df <- df %>%
+  mutate(
+    cholesterol = na_if(cholesterol, 0),
+    cholesterol = if_else(cholesterol > 564, NA_real_, cholesterol)
+  )
+
+# Convert binary/nominal variables to factors with labels
+df <- df %>%
+  mutate(
+    gender           = factor(gender, levels = c(0,1), labels = c("Female","Male")),
+    chest_pain_type  = factor(chest_pain_type, levels = 0:3,
+                              labels = c("Typical Angina","Atypical","Non-anginal","Asymptomatic")),
+    fasting_blood_sugar = factor(fasting_blood_sugar, levels = c(0,1), labels = c("False","True")),
+    resting_ecg      = factor(resting_ecg, levels=0:2,
+                              labels=c("Normal","ST-T Abnormality","LV Hypertrophy")),
+    exercise_angina  = factor(exercise_angina, levels=c(0,1), labels=c("No","Yes")),
+    slope            = factor(slope, levels=1:3, labels=c("Upsloping","Flat","Downsloping")),
+    outcome          = factor(outcome, levels=c(0,1), labels=c("NoDisease","Disease"))
+  )
+```
+
+# 3. Study Population Filter
+
+```{r}
+# Focus: age < 50 & normal cholesterol (<200)
+df_clean <- df %>%
+  filter(age < 50, !is.na(cholesterol), cholesterol < 200) %>%
+  mutate(
+    bp_status = factor(if_else(between(resting_bp, 120, 129), "Elevated", "Normal")),
+    st_status = factor(if_else(st_depression > 1, "Elevated", "Normal"))
+  )
+
+# Save cleaned data
+saveRDS(df_clean, here("data","processed-data","cleaned_df.rds"))
+```

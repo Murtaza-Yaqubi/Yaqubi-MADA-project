@@ -1,0 +1,196 @@
+---
+title: "Exploratory Data Analysis"
+author: "Murtaza"
+format: html
+editor: visual
+---
+
+# Load/install core libraries
+
+```{r}
+library(here)
+library(readr)
+library(dplyr)
+library(tidyverse)
+```
+
+# Read in the data
+
+```{r}
+df_clean <- readRDS(here("data","processed-data","cleaned_df.rds"))
+```
+
+# Exploratory Data Analysis
+
+```{r}
+# Summary stats
+summary_stats_tbl <- df_clean %>%
+  summarise(
+    Age_min           = min(age, na.rm = TRUE),
+    Age_max           = max(age, na.rm = TRUE),
+    Age_mean          = mean(age, na.rm = TRUE),
+    Age_sd            = sd(age, na.rm = TRUE),
+    RestingBP_min     = min(resting_bp, na.rm = TRUE),
+    RestingBP_max     = max(resting_bp, na.rm = TRUE),
+    RestingBP_mean    = mean(resting_bp, na.rm = TRUE),
+    RestingBP_sd      = sd(resting_bp, na.rm = TRUE),
+    Chol_min          = min(cholesterol, na.rm = TRUE),
+    Chol_max          = max(cholesterol, na.rm = TRUE),
+    Chol_mean         = mean(cholesterol, na.rm = TRUE),
+    Chol_sd           = sd(cholesterol, na.rm = TRUE),
+    HR_min            = min(max_heart_rate, na.rm = TRUE),
+    HR_max            = max(max_heart_rate, na.rm = TRUE),
+    HR_mean           = mean(max_heart_rate, na.rm = TRUE),
+    HR_sd             = sd(max_heart_rate, na.rm = TRUE),
+    ST_min            = min(st_depression, na.rm = TRUE),
+    ST_max            = max(st_depression, na.rm = TRUE),
+    ST_mean           = mean(st_depression, na.rm = TRUE),
+    ST_sd             = sd(st_depression, na.rm = TRUE)
+  ) %>%
+  pivot_longer(everything(), names_to = "stat", values_to = "value") %>%
+  separate(stat, into = c("Variable","Statistic"), sep = "_(?=[^_]+$)") %>%
+  pivot_wider(names_from = Variable, values_from = value)
+
+print(summary_stats_tbl)
+
+# Save summary table
+saveRDS(summary_stats_tbl, here("results","tables","table1_summary_statistics.rds"))
+
+
+## Visualizations
+
+# Correlation matrix
+p_corr <- ggcorrplot(cor(df_clean %>% 
+                 select(age, resting_bp, cholesterol, max_heart_rate, st_depression),
+                         use = "pairwise.complete.obs"), lab=TRUE)
+print(p_corr)
+ggsave(filename = here("results","figures","fig1_correlation_matrix.png"), plot = p_corr, width = 10, height = 5)
+
+
+# Histogram of Age 
+p_age <- df_clean %>% 
+  ggplot(aes(age)) + 
+  geom_histogram(bins = 30, fill = "skyblue", color = "black") + 
+  geom_density(aes(y = after_stat(count) * 1.2), color = "red", size = 1.2) +
+  labs(
+    title = "Distribution of Age",
+    x     = "Age (years)",
+    y     = "Count"
+  ) +
+  theme_wsj() +
+  theme(
+    # re-enable & style the axis titles
+    axis.title.x = element_text(size = 12, face = "bold", colour = "black"),
+    axis.title.y = element_text(size = 12, face = "bold", colour = "black"),
+    plot.title   = element_text(size = 18, face = "bold", hjust = 0.5)
+  )
+print(p_age)
+ggsave(filename = here("results","figures","fig2_age_histogram.png"), plot = p_age, width = 10, height = 5)
+
+# Histogram of Cholesterol 
+p_chol <- df_clean %>% 
+  ggplot(aes(cholesterol)) + 
+  geom_histogram(bins = 30, fill = "gold", color = "black") + 
+  geom_density(aes(y = after_stat(count) * 1.2), color = "red", size = 1.2) +
+  labs(
+    title = "Distribution of Cholesterol",
+    x     = "Cholesterol Level (mg/dL)",
+    y     = "Count"
+  ) +
+  theme_wsj() +
+  theme(
+    axis.title.x = element_text(size = 12, face = "bold", colour = "black"),
+    axis.title.y = element_text(size = 12, face = "bold", colour = "black"),
+    plot.title   = element_text(size = 18, face = "bold", hjust = 0.5)
+  )
+print(p_chol)
+ggsave(filename = here("results","figures", "fig3_cholesterol_histogram.png"), plot = p_chol, width = 10, height = 5)
+
+
+# Barplot of CVD prevalence by BP status
+p_bp <- ggplot(df_clean, aes(x = bp_status, fill = outcome)) +
+  geom_bar(position = "fill", width = 0.6) +
+  scale_y_continuous(labels = scales::percent_format()) +
+  labs(
+    title = "CVD Prevalence by Blood Pressure Status",
+    x     = "Blood Pressure Status",
+    y     = "Percent of Individuals",
+    fill  = "CVD"
+  ) +
+  theme_wsj() +
+  theme(
+    axis.title.x = element_text(size = 10),
+    axis.title.y = element_text(size = 10),
+    plot.title   = element_text(size = 18, face = "bold", hjust = 0.5)
+  )
+print(p_bp)
+ggsave(filename = here("results","figures","fig4_bp_barplot.png"), plot = p_bp, width = 10, height = 5)
+
+# Barplot of CVD prevalence by ST-Depression status
+p_st <- ggplot(df_clean, aes(x = st_status, fill = outcome)) +
+  geom_bar(position = "fill", width = 0.6) +
+  scale_y_continuous(labels = scales::percent_format()) +
+  labs(title = "CVD Prevalence by ST-Depression Status",
+       x = "ST-Depression Status", y = "Percent of Individuals", fill = "CVD") +
+  theme_wsj() +
+  theme(
+    axis.title.x = element_text(size = 10),
+    axis.title.y = element_text(size = 10),
+    plot.title   = element_text(size = 18, face = "bold", hjust = 0.5)
+  )
+print(p_st)
+ggsave(filename = here("results","figures","fig5_st_barplot.png"), plot = p_st, width = 10, height = 5)
+
+# Interaction Heatmap: counts by BP & ST-Depression, faceted by CVD
+data_heat <- df_clean %>% count(bp_status, st_status, outcome)
+
+p_heat <- ggplot(data_heat, aes(x = bp_status, y = st_status, fill = n)) +
+  geom_tile(color = "white") +
+  geom_text(aes(label = n), size = 4) +
+  facet_wrap(~ outcome) +
+  labs(
+    title = "Counts by BP & ST Status (facet by Disease)",
+    x = "BP Status",
+    y = "ST Status",
+    fill = "Count"
+  ) +
+  theme_wsj() +
+  theme(
+    axis.title.x = element_text(size = 10),
+    axis.title.y = element_text(size = 10),
+    plot.title   = element_text(size = 15, face = "bold", hjust = 0.5)
+  )
+print(p_heat)
+ggsave(
+  filename = here("results", "figures", "fig6_interaction_heatmap.png"), plot     = p_heat, width    = 10, height   = 5)
+
+
+# Boxplot of age distribution by CVD within BP categories
+p_box <- ggplot(df_clean, aes(x = bp_status, y = age, fill = outcome)) +
+  geom_boxplot(alpha = 0.7) +
+  labs(title = "Age Distribution by CVD Status within BP Categories",
+       x = "Blood Pressure Status", y = "Age (years)", fill = "CVD") +
+  theme_wsj() +
+  theme(
+    axis.title.x = element_text(size = 10),
+    axis.title.y = element_text(size = 10),
+    plot.title   = element_text(size = 15, face = "bold", hjust = 0.5)
+  )
+print(p_box)
+ggsave(filename = here("results","figures","fig7_box_age_bp.png"), plot = p_box, width = 10, height = 5)
+
+# Scatterplot of ST-Depression vs. resting BP by CVD status
+p_scatter <- ggplot(df_clean, aes(x = resting_bp, y = st_depression, color = outcome)) +
+  geom_point(alpha = 1, size = 3) +
+  geom_smooth(method = "loess", se = FALSE) +
+  labs(title = "ST-Depression vs. Resting BP by CVD Status",
+       x = "Resting Blood Pressure (mmHg)", y = "ST-Depression (oldpeak)", color = "CVD") +
+  theme_wsj() +
+  theme(
+    axis.title.x = element_text(size = 10),
+    axis.title.y = element_text(size = 10),
+    plot.title   = element_text(size = 18, face = "bold", hjust = 0.5)
+  )
+print(p_scatter)
+ggsave(filename = here("results","figures","fig8_scatter_st_bp.png"), plot = p_scatter, width = 10, height = 5)
+```

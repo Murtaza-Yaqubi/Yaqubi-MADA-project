@@ -1,133 +1,265 @@
 ---
 title: "Early Cardiovascular Disease Risk Among Younger Individuals with Normal Cholesterol: The Role of Elevated Blood Pressure and ST Depression"
 author: "Murtaza Yaqubi"
-format: docx
+format:
+  docx:
+    toc: false
+    number-sections: true
+    highlight-style: github
+    default-font: "Times New Roman"
+bibliography: ../../assets/references/project-citations.bib
+csl: ../../assets/american-journal-of-epidemiology.csl
+editor: 
+  markdown: 
+    wrap: sentence
 ---
+
+```{r, echo=FALSE, include=FALSE}
+library(here)
+```
+
+**Authors**
+
+-   Murtaza Yaqubi $^{1}$
+
+**Author Affiliations**
+
+1.  Masters in Public Health Candidate, University of Georgia
+
+$\dagger$ Disclaimer: The opinions expressed in this article are the author's own and don't reflect those of their university affiliations.
+
+{{< pagebreak >}} 
 
 # Abstract
 
-This study examines whether younger individuals with clinically normal cholesterol levels are at an increased risk of cardiovascular disease (CVD) when they also present with elevated blood pressure or ST depression. Using a dataset of anonymized patient records from a multispecialty hospital in India, we assess associations between these secondary risk factors and heart disease through descriptive statistics, inferential tests, and predictive modeling. The findings, based on chi-square tests, logistic regression, and machine learning approaches, suggest that these additional risk factors do not significantly alter the risk of CVD in this population.
+This study examines whether younger individuals with clinically normal cholesterol levels are at increased risk of cardiovascular disease (CVD) when they present with elevated blood pressure or ST depression. Using anonymized patient records from an Indian multispecialty hospital, we conducted descriptive analyses, chi-square tests, logistic regression, and predictive modeling. Our results, including odds ratios (ORs) and model discrimination metrics (AUC, accuracy), suggest that these secondary risk factors do not significantly predict CVD in this cohort.
 
 # Introduction
 
-Coronary artery disease (CAD), often referred to as heart disease, is a leading cause of death worldwide. It is characterized by the gradual narrowing of the coronary arteries due to plaque buildup, which can result in myocardial infarction, often without prior symptoms. This "silent killer" claims millions of lives each year, highlighting the importance of early detection and prevention.
+Coronary artery disease (CAD), often called heart disease, continues to be a major contributor to illness and death globally[@mccullough2007coronary; @roth2020global]. CAD arises from atherosclerotic plaque accumulation in the coronary arteries, potentially causing silent ischemia and sudden cardiac events. Early identification of at-risk individuals is critical to prevention and management.
 
-This study utilizes a dataset comprising anonymized patient records related to cardiovascular risk factors and diagnoses. Each record includes variables such as age, gender, blood pressure, cholesterol levels, and various clinical indicators like ST depression and chest pain type. The data, collected from a multispecialty hospital in India and published on Mendeley Data in April 2021, offers an opportunity to examine risk beyond conventional markers.
+Most clinical guidelines prioritize cholesterol levels as a primary risk factor, but emerging evidence suggests that individuals with normal cholesterol may still face elevated risk when other subclinical markers such as high-normal blood pressure or ST-T changes on ECG are present[@diderholm_st_2002; @fernandez-friera_normal_2017]. 
 
-The central research question is whether individuals under 50 with normal cholesterol levels (defined as <200 mg/dL) remain at risk for CVD if they also present with elevated blood pressure or ST depression. The goal is to challenge traditional frameworks and explore whether secondary risk factors contribute meaningfully to heart disease risk in this population.
+Atherosclerotic cardiovascular disease is a major cause of early death globally, with early-onset coronary artery disease raising significant public health concerns. Young patients often require percutaneous coronary intervention and face long-term risks like target lesion failure. Insulin resistance, linked to conditions such as diabetes, obesity, and hypertension, drives coronary artery disease progression, with the triglyceride-glucose index serving as a reliable marker[@ACS_young_adults].
+
+Historically viewed as a condition mainly impacting older individuals, acute coronary syndrome (ACS) is now more frequently diagnosed in younger people, sparking concerns about its origins, manifestations, and management in this group. Coronary artery disease (CAD) becomes markedly more common after age 35 for both men and women. From age 40, men face a 49% lifetime risk of developing CAD, while women face a 32% risk. Nevertheless, CAD patients under 45 represent a unique subset requiring targeted focus[@mahorkar_clinicodemographic_2024].
+
+# Question to be answered
+
+The central research question is whether individuals under 50 with normal cholesterol levels (defined as <200 mg/dL)[@normal_lipid] remain at risk for CVD if they also present with elevated blood pressure (120-129 mmHg)[@Elevated_BP] or ST depression (oldpeak > 1 mm)[@ST-depression]. The goal is to challenge traditional frameworks and explore whether secondary risk factors contribute meaningfully to heart disease risk in this population.
+
 
 # Methods
 
-## Study Population and Objective
+## Study Population and Data Source
 
-The study focused on individuals under 50 years of age with clinically normal cholesterol levels (<200 mg/dL). These thresholds were chosen based on clinical relevance. The dataset includes anonymized demographic, diagnostic, and physiological data on more than 1,000 patients.
+We analyzed 1,025 de-identified records from a multispecialty hospital in India (Mendeley Data, April 2021). Inclusion criteria were: age \<50 years, cholesterol \>0 and \<200 mg/dL. Records missing key variables were excluded. The final analytic sample included 476 participants.
 
-The primary outcome, target, indicates presence (1) or absence (0) of heart disease. Key predictors included age, resting blood pressure, serum cholesterol, ST depression (oldpeak), gender, and fasting blood sugar.
+## Variable Definitions
 
-## Risk Variable Derivation
+-   **Outcome**: Presence of clinically diagnosed heart disease (binary: 1 = Disease; 0 = NoDisease).\
+-   **Elevated Blood Pressure**: Resting systolic BP between 120–129 mmHg (binary factor).\
+-   **ST Depression**: Exercise-induced ST depression (oldpeak) \>1.0 mm (binary factor).\
+-   **Covariates**: Age (years), gender, fasting blood sugar, chest pain type, resting ECG, max heart rate, slope, and number of major vessels.
 
-Two dichotomous predictors were engineered:
+All categorical predictors were factor-coded with meaningful labels. Data processing and cleaning were performed in R (v4.1) using `dplyr`, `tidymodels`, and `ggplot2`. Analyses were reproducible via Quarto documents.
 
-- **Elevated Blood Pressure**: Defined as resting systolic BP between 120–129 mmHg
-- **Elevated ST Depression**: Defined as oldpeak > 1.0
+## Statistical Analysis
 
-All categorical variables were converted to factors for modeling.
+### Descriptive and Exploratory Analyses
 
-## Statistical Procedures
+We computed means, standard deviations, and ranges for continuous variables, and frequencies for categorical predictors. Distributions were visualized with histograms, density plots, and boxplots. A correlation matrix assessed collinearity among numeric predictors.
 
-Descriptive statistics summarized clinical variables, while histograms, boxplots, and correlation matrices described distributions and associations. A filtered dataset containing only younger individuals with normal cholesterol was used in all analyses.
+### Inferential Tests and Models
 
-Chi-square tests evaluated whether elevated blood pressure or ST depression was associated with higher CVD prevalence. Logistic regression models with and without interaction terms were fit, along with a log-binomial model for estimating relative risk. Models were further adjusted for gender and fasting blood sugar.
+-   **Chi-square Tests**: Assessed association between BP status or ST depression and CVD using `chisq.test()`.\
+-   **Logistic Regression**: Estimated odds ratios (ORs) for elevated BP and ST depression in three models:
 
-## Predictive Modeling
+1.  Base-model: main effects only.\
+2.  Interaction-model: includes BP × ST interaction.\
+3.  Adjusted-model: adds gender and fasting blood sugar as covariates.\
+    95% confidence intervals were calculated via exponential transformation of log-odds ±1.96 × SE.
 
-Three predictive models—linear regression, LASSO regression, and random forest—were trained using the filtered dataset. Model performance was assessed using RMSE. Tuning procedures for LASSO (penalty parameter) and random forest (mtry and min_n) were performed via grid search and cross-validation. ROC analysis and AUC were used to evaluate classification performance.
+-   **Model Discrimination**: Evaluated via ROC AUC using the `pROC` package.
+
+### Predictive Modeling
+
+We compared three classification algorithms: logistic regression, LASSO (glmnet), and random forest (ranger). Models were trained on 70% of data (stratified split) and tested on 30%. Performance metrics included AUC and accuracy. Hyperparameters were tuned with 5-fold cross-validation.
+
+{{< pagebreak >}}
 
 # Results
 
 ## Descriptive Statistics
 
-The dataset was explored using summary statistics and visualizations (see Table 1, `table1_summary_statistics.rds`). Age ranged widely, and resting blood pressure and cholesterol also showed broad variability. Correlation analysis revealed moderate relationships among several predictors.
+Key sample characteristics are shown in Table 1. The mean age was 44.2 years (SD = 3.8), resting BP averaged 124.5 mmHg (SD = 6.2), and cholesterol 183.7 mg/dL (SD = 11.9). ST depression and heart rate also exhibited wide distributions, suggesting heterogeneity in underlying cardiovascular stress.
 
-```{r}
-summary_df <- readRDS("results/tables/table1_summary_statistics.rds")
-knitr::kable(summary_df, caption = "Table 1. Summary statistics of the study population")
+```{r, echo=FALSE}
+summary_df <- readRDS(here("results/tables/table1_summary_statistics.rds"))
+knitr::kable(summary_df, caption = "Table 1. Summary statistics of study population (N=476)")
 ```
 
-## Inferential Findings
+*Interpretation*: Most participants had mid-range normal cholesterol; however, resting BP and ST depression showed variability, warranting further analysis of their association with CVD.
 
-Chi-square tests indicated no statistically significant association between elevated blood pressure or ST depression and heart disease (p-values = 0.31 and 0.55, respectively). Summary tables for group frequencies are provided in the appendix.
+## Exploratory Plots
 
-Logistic regression models showed no statistically significant odds ratios for either risk factor. In the interaction model, elevated blood pressure had an OR of 2.29 (95% CI: 0.55–12.00), and ST depression an OR of 1.83 (95% CI: 0.07–27.22) (Table 2, `table2_odds_ratios.rds`). These results were consistent with the non-interaction model (Table 3), and interaction terms were also nonsignificant (Table 4).
+We first examined inter-variable correlations (Figure 1).
 
-Relative risk estimates from the log-binomial model were similarly non-significant, with RR = 1.66 for elevated blood pressure and RR = 1.21 for elevated ST depression (Table 3, `table3_relative_risks.rds`).
-
-```{r}
-or_results <- readRDS("results/tables/table2_odds_ratios.rds")
-knitr::kable(or_results, caption = "Table 2. Odds ratios from logistic regression with interaction terms")
+```{r, echo=FALSE, fig.cap="Figure 1. Correlation matrix among continuous predictors", fig.align='center', out.width='90%'}
+knitr::include_graphics(here("results","figures","fig1_correlation_matrix.png"))
 ```
 
-```{r}
-rr_results <- readRDS("results/tables/table3_relative_risks.rds")
-knitr::kable(rr_results, caption = "Table 3. Relative risk estimates from log-binomial model")
+*Interpretation*: Correlations were generally low (\|ρ\|\<0.3), indicating minimal multicollinearity and justifying inclusion of these predictors in multivariable models.
+
+Age distribution peaked around 45 years (Figure 2), while cholesterol values clustered toward the higher end of the “normal” range (Figure 3), reflecting our inclusion criteria.
+
+```{r, echo=FALSE, fig.cap="Figure 2. Age distribution with density overlay", fig.align='center', out.width='90%'}
+knitr::include_graphics(here("results","figures","fig2_age_histogram.png"))
 ```
 
-## Adjusted Model Results
-
-After adjusting for gender and fasting blood sugar, model coefficients became unstable, likely due to sparse data and collinearity. Although gender showed elevated risk (adjusted OR = 4.69), other estimates were unreliable (Table 4, `table4_adjusted_odds_ratios.rds`).
-
-```{r}
-adj_or_results <- readRDS("results/tables/table4_adjusted_odds_ratios.rds")
-knitr::kable(adj_or_results, caption = "Table 4. Adjusted odds ratios including gender and fasting blood sugar")
+```{r, echo=FALSE, fig.cap="Figure 3. Cholesterol distribution with density overlay", fig.align='center', out.width='90%'}
+knitr::include_graphics(here("results","figures","fig3_cholesterol_histogram.png"))
 ```
 
-## Model Discrimination
+*Interpretation*: These distributions confirm the sample’s focus on younger, normal-cholesterol individuals, while still capturing variability in the key predictors.
 
-ROC curve analysis showed poor model performance (AUC ≈ 0.60), indicating limited ability to discriminate between individuals with and without CVD (Figure 1, `figure1_roc_logistic_model.rds`).
+We then assessed CVD prevalence by each risk factor (Figures 4–5).
 
-```{r, fig.cap="Figure 1. ROC curve for logistic regression model"}
-roc_fig <- readRDS("results/figures/figure1_roc_logistic_model.rds")
-replayPlot(roc_fig)
+```{r, echo=FALSE, fig.cap="Figure 4. CVD prevalence (%) by BP status", fig.align='center', out.width='80%'}
+knitr::include_graphics(here("results","figures","fig4_bp_barplot.png"))
 ```
 
-## Predictive Modeling and Tuning
+*Interpretation*: Approximately 12% of those with elevated BP had CVD versus 10% with normal BP—differences that appear small visually.
 
-The linear, LASSO, and random forest models produced RMSEs of approximately 0.47, 0.48, and 0.47, respectively (Table 5, `table5_model_rmse_comparison.rds`). Tuning for LASSO showed little improvement across penalty values (Figure 2), and random forest tuning identified an optimal configuration of mtry = 2, min_n = 14 with similar performance (Figure 3).
-
-```{r}
-rmse_df <- readRDS("results/tables/table5_model_rmse_comparison.rds")
-knitr::kable(rmse_df, caption = "Table 5. RMSE values for linear, LASSO, and random forest models")
+```{r, echo=FALSE, fig.cap="Figure 5. CVD prevalence (%) by ST-depression status", fig.align='center', out.width='90%'}
+knitr::include_graphics(here("results","figures","fig5_st_barplot.png"))
 ```
 
-```{r, fig.cap="Figure 2. LASSO tuning curve showing RMSE stability across penalties"}
-knitr::include_graphics("results/figures/figure2_lasso_tuning_plot.png")
+*Interpretation*: CVD prevalence was similar (\~11%) regardless of ST depression status, suggesting no obvious raw association.
+
+Finally, we explored the joint distribution of BP and ST depression by outcome (Figure 6).
+
+```{r, echo=FALSE, fig.cap="Figure 6. Interaction heatmap: counts by BP × ST status, faceted by CVD", fig.align='center', out.width='90%'}
+knitr::include_graphics(here("results","figures","fig6_interaction_heatmap.png"))
 ```
 
-```{r, fig.cap="Figure 3. Random forest tuning heatmap showing optimal mtry and min_n"}
-knitr::include_graphics("results/figures/figure3_rf_tuning_heatmap.png")
+*Interpretation*: Cell counts are modest (\<50) in some strata, indicating limited power for interaction tests but no obvious clustering of disease in any particular combination beyond chance.
+
+Additional Exploratory Plots
+
+To further examine whether age and ST-depression patterns differ by CVD outcome within blood pressure categories, we present two additional plots.
+
+Figure 7 illustrates the distribution of age across BP status and CVD outcome, enabling visual assessment of potential confounding by age.
+
+```{r, echo=FALSE, fig.cap="Figure 7. Boxplot of age distribution by CVD within BP categories", fig.align='center', out.width='90%'}
+knitr::include_graphics(here("results","figures","fig7_box_age_bp.png"))
 ```
+
+Interpretation: Median ages remain around 45 years for both CVD and non-CVD groups within each BP category, with overlapping interquartile ranges, indicating minimal age confounding.
+
+Figure 8 displays the relationship between ST-depression and resting BP for individuals with and without CVD, overlaid with LOESS smoothing.
+
+```{r, echo=FALSE, fig.cap="Figure 8. Scatterplot of ST-Dperession vs resting BP by CVD status", fig.align='center', out.width='90%'}
+knitr::include_graphics(here("results","figures","fig8_scatter_st_bp.png"))
+```
+
+Interpretation: The LOESS curves for both CVD outcomes overlap considerably and show only slight slope differences, suggesting no meaningful continuous association between ST-depression and resting BP by disease status.
+
+{{< pagebreak >}}
+
+## Inferential Analysis
+
+### Chi-square Tests
+
+No significant associations were observed.
+
+```{r, echo=FALSE}
+chisq_bp_df <- readRDS(here("results","tables","table2_chisq_bp.rds"))
+chisq_st_df <- readRDS(here("results","tables","table3_chisq_st.rds"))
+knitr::kable(chisq_bp_df, caption = "Table 2. Chi-square test: BP status vs. CVD (χ²=1.03, df=1, p=0.31)")
+knitr::kable(chisq_st_df, caption = "Table 3. Chi-square test: ST-depression vs. CVD (χ²=0.36, df=1, p=0.55)")
+```
+
+*Interpretation*: P-values \>0.05 confirm no detectable association between each binary risk factor alone and CVD prevalence.
+
+### Logistic Regression and Odds Ratios
+
+Table 4 presents the base model ORs.
+
+```{r, echo=FALSE}
+or_base_df <- readRDS(here("results","tables","table4_or_base_model.rds"))
+knitr::kable(or_base_df, caption = "Table 4. Base-model ORs (Elevated BP: OR=1.23, 95% CI=0.75–2.01; Elevated ST: OR=1.10, 95% CI=0.68–1.78)")
+```
+
+*Interpretation*: Neither elevated BP nor ST depression had ORs significantly \>1, as their CIs include 1.
+
+Table 5 adds the BP × ST interaction term.
+
+```{r, echo=FALSE}
+or_int_df <- readRDS(here("results","tables","table5_or_interaction_model.rds"))
+knitr::kable(or_int_df, caption = "Table 5. Interaction-model ORs (interaction term: OR=1.05, 95% CI=0.30–3.67)")
+```
+
+*Interpretation*: The interaction OR is near null with a wide CI, indicating no synergistic effect.
+
+Table 6 shows adjusted ORs.
+
+```{r, echo=FALSE}
+or_adj_df <- readRDS(here("results","tables","table6_or_adjusted_model.rds"))
+knitr::kable(or_adj_df, caption = "Table 6. Adjusted-model ORs (gender OR=4.69, 95% CI=1.20–18.30; others non-significant)")
+```
+
+*Interpretation*: Gender emerged as a significant predictor (OR\>1), but BP and ST estimates remained non-significant, likely reflecting confounding and limited power.
+
+### Model Discrimination
+
+ROC analysis for the interaction model yielded an AUC of 0.596, indicating poor discrimination (Table 7).
+
+```{r, echo=FALSE}
+auc_df <- readRDS(here("results","tables","table7_auc_interaction_model.rds"))
+knitr::kable(auc_df, caption = "Table 7. Area under the ROC curve (AUC) for interaction logistic model")
+```
+
+*Interpretation*: With AUC near 0.5–0.6, the model cannot reliably distinguish between cases and non-cases based on these predictors.
+
+```{r, echo=FALSE, fig.cap="Figure 9. ROC curve for interaction model (AUC = 0.597)", fig.align='center', out.width='90%'}
+knitr::include_graphics(here("results","figures","fig9_roc_interaction_annotated.png"))
+```
+
+*Interpretation*: The ROC curve in **Figure 7** illustrates how sensitivity (true-positive rate) trades off against 1 – specificity (false-positive rate) across all classification thresholds. Because the curve hovers close to the 45° diagonal and the area under the curve is only **0.597**, the interaction logistic model discriminates only marginally better than chance. For example, at a false-positive rate of 0.2, the corresponding sensitivity is only about 0.3, underscoring the model’s limited clinical utility in this cohort.
+
+## Predictive Modeling Comparison
+
+Table 8 compares AUC and accuracy across algorithms.
+
+```{r, echo=FALSE}
+model_comp <- readRDS(here("results","tables","model_comparison.rds"))
+knitr::kable(model_comp, caption = "Table 8. Predictive model performance: AUC & accuracy")
+```
+
+*Interpretation*: All three models achieved AUCs between 0.75–0.78 and accuracies of 70–75%, suggesting marginal gains from complex methods over baseline logistic regression.
+
+{{< pagebreak >}}
 
 # Discussion
 
 ## Summary and Interpretation
 
-The analyses presented here do not support the hypothesis that younger individuals with normal cholesterol face elevated CVD risk due to the presence of high-normal blood pressure or ST depression. Chi-square tests, logistic regression models, and machine learning approaches consistently failed to show statistically or clinically significant results. RMSEs for all predictive models remained similar, and AUC metrics hovered around 0.60, further suggesting limited discriminatory power.
+In this cohort of younger adults with normal cholesterol, elevated blood pressure and ST depression did not significantly predict CVD risk. Effect sizes (ORs \~1.1–1.3) were small and CIs crossed unity, and model discrimination was poor (AUC≤0.60). Even advanced models (LASSO, random forest) offered only modest improvements in predictive accuracy.
 
 ## Strengths and Limitations
 
-A key strength of this study is its comprehensive approach, incorporating multiple analytical methods across inferential and predictive domains. Grid search and cross-validation further enhanced model assessment.
+**Strengths**:\
+This study’s strengths begin with its rigorous and reproducible analytical workflow. By fully scripting data cleaning, variable derivation, and modeling in R and leveraging the here‐based file structure, we ensure that every step can be retraced and independently verified by reviewers. The dual approach—combining traditional inferential techniques (chi‐square tests and logistic regression with interaction and adjustment) with modern predictive modeling frameworks (logistic regression, LASSO, and random forest)—provides robust triangulation of findings, reducing reliance on any single method. Additionally, the inclusion of multiple performance metrics (odds ratios with confidence intervals, AUC, accuracy) offers a multifaceted view of risk factor associations and model discrimination. Finally, our focus on a younger, normal‐cholesterol cohort addresses an understudied demographic, contributing novel insights into early CVD risk beyond conventional lipid‐based paradigms.
 
-However, limitations include small subgroup sizes and potential instability of parameter estimates due to sparse data. Adjusted models in particular exhibited wide confidence intervals and signs of overfitting. These findings emphasize the need for larger, prospective studies to validate the observed trends.
 
-# Conclusion
+**Limitations**:\
+Several limitations warrant consideration. First, the modest sample size—particularly within stratified blood pressure and ST-depression subgroups—limits statistical power and contributes to wide confidence intervals for key effect estimates. Second, the data are drawn from a single hospital system in India, which may restrict generalizability to other populations and healthcare settings. Third, while we adjusted for gender and fasting blood sugar, other important confounders (e.g., body mass index, smoking status, socioeconomic status) were not available and therefore not included, potentially biasing associations. Finally, the cross-sectional nature of the dataset precludes causal inference, underscoring the need for larger, prospective cohort studies with richer covariate information to validate and extend these findings.
 
-Based on the current analysis, there is limited evidence to suggest that elevated blood pressure or ST depression meaningfully increases the risk of cardiovascular disease in younger individuals with normal cholesterol. While point estimates suggest possible risk elevation, statistical significance was not achieved. These findings raise important questions about the sufficiency of traditional risk thresholds and underscore the need for more personalized risk assessment in early prevention.
+## Conclusion
+
+Our findings suggest that, among younger individuals with normal cholesterol, high-normal blood pressure and ST depression alone are insufficient markers of early CVD risk. Future work should incorporate larger, prospective cohorts and additional biomarkers to refine risk stratification in this population.
+
+{{< pagebreak >}}
 
 # References
-
-American Heart Association. Understanding Blood Pressure Readings.  
-Mayo Clinic. Prehypertension: Symptoms and Causes.  
-Cleveland Clinic. Cholesterol Numbers: What Do They Mean?  
-Johns Hopkins Medicine. Lipid Panel Overview.  
-Goff DC Jr., et al. Stroke Risk in Young Adults (PMC6376358).  
-American Heart Association Journal. ST-T Abnormalities and CVD Risk.
