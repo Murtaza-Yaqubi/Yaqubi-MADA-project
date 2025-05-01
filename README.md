@@ -22,9 +22,11 @@ Top-level directories:
 
 ### `assets/` Directory
 
-The `assets/` directory holds the references folder which has the references used throughout the project.
+The `assets/` directory holds static resources used throughout the project, including bibliographic references:
 
--   `assets/references/project-citations.bib`: this file contains all the Bibtex citations for the project
+-   `assets/references/`: Contains the project's citation files.
+
+    -   `project-citations.bib`: BibTeX file listing all references used in analyses and the manuscript.
 
 ### `code/` Directory
 
