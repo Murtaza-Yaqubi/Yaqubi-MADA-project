@@ -26,6 +26,9 @@ library(here)
 
 1.  Masters in Public Health Candidate, University of Georgia
 
+$*$  Corresponding author: my19956@uga.edu
+
+
 $\dagger$ Disclaimer: The opinions expressed in this article are the author's own and don't reflect those of their university affiliations.
 
 {{< pagebreak >}} 
